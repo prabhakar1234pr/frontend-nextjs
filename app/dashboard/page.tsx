@@ -1,6 +1,7 @@
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import Header from '../components/Header'
+import { syncUser } from '../lib/api'
 
 interface GitGuide {
   id: number
@@ -18,6 +19,14 @@ export default async function DashboardPage() {
   }
 
   const user = await currentUser()
+
+  // Sync user to Supabase automatically
+  try {
+    await syncUser()
+  } catch (error) {
+    console.error('Failed to sync user:', error)
+    // Continue anyway - user sync can happen later or be retried
+  }
 
   // Placeholder data - will be replaced with actual data from database
   const gitguides: GitGuide[] = [
