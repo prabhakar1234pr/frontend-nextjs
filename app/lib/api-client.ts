@@ -1,26 +1,9 @@
 'use client'
 
+// Re-export type for convenience
+export type { CreateProjectData } from './types'
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-
-/**
- * Project API Types
- */
-export interface CreateProjectData {
-  github_url: string
-  skill_level: 'beginner' | 'intermediate' | 'expert'
-  target_days: number
-}
-
-export interface Project {
-  project_id: string
-  project_name: string
-  github_url: string
-  skill_level: string
-  target_days: number
-  status: string
-  created_at: string
-  updated_at?: string
-}
 
 /**
  * Get auth headers using client-side Clerk hook
