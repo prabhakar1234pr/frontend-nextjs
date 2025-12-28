@@ -1,28 +1,14 @@
-import { auth, currentUser } from '@clerk/nextjs/server'
+import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
+import { Suspense } from 'react'
 import Header from '../components/Header'
-import { syncUser, listUserProjects } from '../lib/api'
 import DashboardContent from '../components/dashboard/DashboardContent'
+import Loading from './loading'
+import { listUserProjects } from '../lib/api'
 import { type Project } from '../lib/api'
 
-export default async function DashboardPage() {
-  const { userId } = await auth()
-  
-  if (!userId) {
-    redirect('/sign-in')
-  }
-
-  const user = await currentUser()
-
-  // Sync user to Supabase automatically
-  try {
-    await syncUser()
-  } catch (error) {
-    console.error('Failed to sync user:', error)
-    // Continue anyway - user sync can happen later or be retried
-  }
-
-  // Fetch user's projects from Supabase
+// Separate component for async data fetching
+async function ProjectsLoader() {
   let projects: Project[] = []
   try {
     const response = await listUserProjects()
@@ -31,13 +17,23 @@ export default async function DashboardPage() {
     }
   } catch (error) {
     console.error('Failed to fetch projects:', error)
-    // Continue with empty array - projects will show empty state
+  }
+  return <DashboardContent projects={projects} />
+}
+
+export default async function DashboardPage() {
+  const { userId } = await auth()
+  
+  if (!userId) {
+    redirect('/sign-in')
   }
 
   return (
     <>
       <Header />
-      <DashboardContent projects={projects} />
+      <Suspense fallback={<Loading />}>
+        <ProjectsLoader />
+      </Suspense>
     </>
   )
 }

@@ -66,31 +66,56 @@ export async function getProject(projectId: string) {
 
 /**
  * List user's projects (server-side)
+ * Returns empty array on error to prevent page crashes
  */
 export async function listUserProjects() {
   try {
     const headers = await getAuthHeaders()
     
-    const response = await fetch(`${API_URL}/api/projects/user/list`, {
-      method: 'GET',
-      headers,
-    })
+    // Create AbortController for timeout
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 15000) // 15 second timeout
     
-    if (!response.ok) {
-      let errorMessage = `Failed to list projects (${response.status})`
-      try {
-        const error = await response.json()
-        errorMessage = error.detail || error.message || errorMessage
-      } catch {
-        errorMessage = response.statusText || errorMessage
+    try {
+      const response = await fetch(`${API_URL}/api/projects/user/list`, {
+        method: 'GET',
+        headers,
+        signal: controller.signal,
+      })
+      
+      clearTimeout(timeoutId)
+      
+      if (!response.ok) {
+        let errorMessage = `Failed to list projects (${response.status})`
+        try {
+          const error = await response.json()
+          errorMessage = error.detail || error.message || errorMessage
+        } catch {
+          errorMessage = response.statusText || errorMessage
+        }
+        console.warn('Failed to list projects:', errorMessage)
+        // Return empty result instead of throwing to prevent page crash
+        return { success: false, projects: [] }
       }
-      throw new Error(errorMessage)
+      
+      return await response.json()
+    } catch (fetchError) {
+      clearTimeout(timeoutId)
+      throw fetchError
     }
-    
-    return await response.json()
   } catch (error) {
-    console.error('Failed to list projects:', error)
-    throw error
+    // Handle timeout and other errors gracefully
+    if (error instanceof Error) {
+      if (error.name === 'AbortError' || error.message.includes('timeout')) {
+        console.warn('Request timeout while listing projects. Returning empty list.')
+      } else {
+        console.error('Failed to list projects:', error.message)
+      }
+    } else {
+      console.error('Failed to list projects:', error)
+    }
+    // Return empty result instead of throwing to prevent page crash
+    return { success: false, projects: [] }
   }
 }
 

@@ -8,11 +8,12 @@ import { createProjectClient, type CreateProjectData } from '../../lib/api-clien
 interface CreateProjectModalProps {
   isOpen: boolean
   onClose: () => void
+  onProjectCreated?: () => void
 }
 
 type ExperienceLevel = 'beginner' | 'intermediate' | 'expert'
 
-export default function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps) {
+export default function CreateProjectModal({ isOpen, onClose, onProjectCreated }: CreateProjectModalProps) {
   const router = useRouter()
   const { getToken } = useAuth()
   const [githubUrl, setGithubUrl] = useState('')
@@ -75,8 +76,11 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
         // Close modal first
         onClose()
         
-        // Refresh the dashboard to show the new project
-        router.refresh()
+        // Trigger project refresh callback immediately
+        // The callback will fetch fresh data from the server
+        if (onProjectCreated) {
+          onProjectCreated()
+        }
       } else {
         throw new Error('Failed to create project')
       }

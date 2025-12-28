@@ -55,6 +55,41 @@ export async function createProjectClient(data: CreateProjectData, token: string
 }
 
 /**
+ * List user's projects (client-side)
+ * Requires token from useAuth hook
+ */
+export async function listUserProjectsClient(token: string | null) {
+  try {
+    if (!token) {
+      throw new Error('Authentication required')
+    }
+
+    const headers = getAuthHeadersClient(token)
+    
+    const response = await fetch(`${API_URL}/api/projects/user/list`, {
+      method: 'GET',
+      headers,
+    })
+    
+    if (!response.ok) {
+      let errorMessage = `Failed to list projects (${response.status})`
+      try {
+        const error = await response.json()
+        errorMessage = error.detail || error.message || errorMessage
+      } catch {
+        errorMessage = response.statusText || errorMessage
+      }
+      throw new Error(errorMessage)
+    }
+    
+    return await response.json()
+  } catch (error) {
+    console.error('Failed to list projects:', error)
+    throw error
+  }
+}
+
+/**
  * Delete a project (client-side)
  * Requires token from useAuth hook
  */

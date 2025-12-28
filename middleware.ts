@@ -12,6 +12,9 @@ export default clerkMiddleware(async (auth, request) => {
     if (!isPublicRoute(request)) {
       await auth.protect()
     }
+  }, {
+    // Disable debug mode in production
+    debug: process.env.NODE_ENV === 'development',
   })
   
   export const config = {

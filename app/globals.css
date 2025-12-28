@@ -86,3 +86,103 @@ input[type="range"].slider::-moz-range-thumb:hover {
   transform: scale(1.1);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
+
+/* Clerk UserButton Dark Theme Customization */
+.cl-userButtonPopoverCard {
+  background-color: #3f4449 !important;
+  border-color: #52525b !important;
+}
+
+.cl-userButtonPopoverActionButton {
+  color: #d4d4d8 !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  padding: 12px 16px !important;
+}
+
+.cl-userButtonPopoverActionButton:hover {
+  background-color: #4f5459 !important;
+  color: #ffffff !important;
+}
+
+.cl-userPreview {
+  color: #ffffff !important;
+}
+
+.cl-userPreviewTextContainer {
+  color: #ffffff !important;
+}
+
+.cl-userPreviewSecondaryIdentifier {
+  color: #a1a1aa !important;
+}
+
+.cl-userButtonTrigger {
+  width: 28px !important;
+  height: 28px !important;
+}
+
+.cl-userButtonAvatarBox {
+  width: 28px !important;
+  height: 28px !important;
+}
+
+/* Style the "Secured by Development mode" footer - white text, no orange */
+.cl-userButtonPopoverFooter {
+  color: #ffffff !important;
+  border-color: #ffffff !important;
+  border-top-color: #ffffff !important;
+  border-bottom-color: #ffffff !important;
+  border-left-color: #ffffff !important;
+  border-right-color: #ffffff !important;
+  background-color: transparent !important;
+}
+
+.cl-internal-l2l775 {
+  color: #ffffff !important;
+}
+
+/* Remove any orange/warning colors from footer - change all orange to white */
+.cl-userButtonPopoverFooter * {
+  color: #ffffff !important;
+  border-color: #ffffff !important;
+  border-top-color: #ffffff !important;
+  border-bottom-color: #ffffff !important;
+  background-color: transparent !important;
+  background: transparent !important;
+}
+
+/* Target any SVG or icon elements that might be orange */
+.cl-userButtonPopoverFooter svg,
+.cl-userButtonPopoverFooter path,
+.cl-userButtonPopoverFooter circle,
+.cl-userButtonPopoverFooter rect,
+.cl-userButtonPopoverFooter line {
+  stroke: #ffffff !important;
+  fill: #ffffff !important;
+  color: #ffffff !important;
+}
+
+/* Remove any orange background or border from the footer container */
+.cl-userButtonPopoverFooter::before,
+.cl-userButtonPopoverFooter::after {
+  border-color: #ffffff !important;
+  background-color: transparent !important;
+  background: transparent !important;
+}
+
+/* Override any orange colors (common warning/orange hex codes) */
+.cl-userButtonPopoverFooter,
+.cl-userButtonPopoverFooter * {
+  /* Override common orange colors */
+  border-color: #ffffff !important;
+  outline-color: #ffffff !important;
+}
+
+/* Specifically target the internal div that contains the text */
+.cl-internal-l2l775,
+.cl-internal-l2l775 * {
+  color: #ffffff !important;
+  border-color: #ffffff !important;
+  background: transparent !important;
+}

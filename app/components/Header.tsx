@@ -87,7 +87,30 @@ export default function Header() {
             >
               Dashboard
             </Link>
-            <UserButton afterSignOutUrl="/" />
+            <UserButton 
+              afterSignOutUrl="/"
+              appearance={{
+                variables: {
+                  colorBackground: '#3f4449',
+                  colorText: '#ffffff',
+                  colorTextSecondary: '#a1a1aa',
+                  colorPrimary: '#ffffff',
+                  colorInputBackground: '#2f3338',
+                  colorInputText: '#ffffff',
+                  borderRadius: '0.5rem',
+                },
+                elements: {
+                  userButtonPopoverCard: 'bg-[#3f4449] border border-zinc-600 shadow-xl',
+                  userButtonPopoverActionButton: 'text-zinc-300 hover:text-white hover:bg-[#4f5459] transition-all duration-200',
+                  userButtonPopoverActionButtonText: 'text-[13px] font-medium',
+                  userButtonPopoverFooter: 'hidden',
+                  userPreview: 'text-white',
+                  userPreviewTextContainer: 'text-white',
+                  userPreviewSecondaryIdentifier: 'text-zinc-400',
+                  avatarBox: 'w-7 h-7',
+                },
+              }}
+            />
           </SignedIn>
         </div>
       </nav>
