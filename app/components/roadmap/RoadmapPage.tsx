@@ -129,9 +129,9 @@ export default function RoadmapPage({ projectId }: RoadmapPageProps) {
   }
   
   return (
-    <div className="flex gap-3 h-[calc(100vh-200px)]">
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
+    <>
+      <div className="flex flex-col h-[calc(100vh-120px)]">
+        {/* Day Cards Strip */}
         <div className="flex-shrink-0">
           <DayCardsStrip
             days={days}
@@ -141,6 +141,7 @@ export default function RoadmapPage({ projectId }: RoadmapPageProps) {
           />
         </div>
         
+        {/* Kanban Board */}
         <div className="flex-1 min-h-0">
           {dayDetails && (
             <KanbanBoard
@@ -157,14 +158,12 @@ export default function RoadmapPage({ projectId }: RoadmapPageProps) {
         </div>
       </div>
       
-      {/* Chatbot Sidebar */}
-      <div className="w-72 flex-shrink-0">
-        <ChatbotWidget 
-          projectId={projectId}
-          roadmapContext={roadmapContext}
-        />
-      </div>
-    </div>
+      {/* Floating Chatbot Widget */}
+      <ChatbotWidget 
+        projectId={projectId}
+        roadmapContext={roadmapContext}
+      />
+    </>
   )
 }
 

@@ -90,30 +90,24 @@ export default function ChatbotWidget({ projectId, roadmapContext }: ChatbotWidg
 
   if (isCollapsed) {
     return (
-      <div className="w-full">
+      <div className="fixed bottom-6 right-6 z-50">
         <button
           onClick={() => setIsCollapsed(false)}
-          className="w-full bg-[#3f4449] hover:bg-[#4f5459] rounded-lg border border-white/10 p-4 transition-all duration-200 flex items-center gap-3"
+          className="w-12 h-12 bg-[#3f4449] hover:bg-[#4f5459] border border-white/10 rounded-full shadow-lg shadow-black/30 transition-all duration-200 flex items-center justify-center hover:scale-105"
         >
-          <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
-            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-            </svg>
-          </div>
-          <div className="text-left flex-1">
-            <p className="text-white text-sm font-medium">AI Tutor</p>
-            <p className="text-zinc-400 text-xs">Click to chat</p>
-          </div>
+          <svg className="w-5 h-5 text-zinc-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          </svg>
         </button>
       </div>
     )
   }
 
   return (
-    <div className="w-full h-[600px] flex flex-col bg-[#3f4449] rounded-lg shadow-lg border border-white/10">
-      <div className="bg-[#3f4449] rounded-lg border border-white/10 w-full h-full flex flex-col">
+    <div className="fixed bottom-6 right-6 z-50 w-80 h-[500px] flex flex-col bg-[#3f4449] rounded-2xl shadow-2xl shadow-black/40 border border-white/10">
+      <div className="bg-[#3f4449] rounded-2xl border border-white/10 w-full h-full flex flex-col overflow-hidden">
         {/* Chat Header */}
-        <div className="bg-[#2f3338] px-4 py-3 rounded-t-lg border-b border-white/10 flex items-center justify-between">
+        <div className="bg-[#2f3338] px-4 py-3 rounded-t-2xl border-b border-white/10 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center">
               <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
