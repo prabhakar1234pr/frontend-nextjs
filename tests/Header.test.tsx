@@ -24,6 +24,7 @@ jest.mock("@clerk/nextjs", () => ({
   UserButton: () => null,
   SignedIn: () => null,
   SignedOut: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
+  useAuth: () => ({ isLoaded: true, userId: null }),
 }));
 
 describe("Header", () => {

@@ -31,6 +31,7 @@ const getTaskTypeStyle = (taskType: Task['task_type']) => {
       return { bg: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-500/20' }
     case 'github_profile':
     case 'create_repo':
+    case 'github_connect':
     case 'verify_commit':
       return { bg: 'bg-orange-500/10', text: 'text-orange-400', border: 'border-orange-500/20' }
     default:
@@ -77,7 +78,7 @@ export default function WorkplaceIDE({ taskDetails, initialCompleted, onProgress
   // For coding tasks, use full-screen layout
   if (task.task_type === 'coding') {
     return (
-      <div className="h-[calc(100vh-3.5rem)] bg-[#09090b] flex flex-col">
+      <div className="h-screen bg-[#09090b] flex flex-col">
         {/* Minimal Nav Bar */}
         <div className="h-10 bg-[#0c0c0e] border-b border-zinc-800 flex items-center px-4 gap-4">
           <Link 

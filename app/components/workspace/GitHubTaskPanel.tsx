@@ -201,13 +201,18 @@ export default function GitHubTaskPanel({
       
       const data = await response.json()
       
-      const result: VerificationResult = {
-        success: true,
-        checks: [
+      const checks =
+        Array.isArray(data?.checks) && data.checks.length > 0
+          ? data.checks
+          : [
           { label: 'Token validated', passed: true, detail: 'PAT verified' },
           { label: 'Consent recorded', passed: true, detail: 'Terms accepted' },
           { label: 'Account connected', passed: true, detail: 'GitHub connected' }
         ]
+      
+      const result: VerificationResult = {
+        success: true,
+        checks
       }
       
       setVerificationResult(result)
@@ -259,12 +264,47 @@ export default function GitHubTaskPanel({
       } else if (task.task_type === 'create_repo') {
         const repo = extractRepo(input)
         if (!repo) throw new Error('Invalid repo URL')
+        const projectRepo = extractRepo(project.github_url)
+        const isDifferentFromCurriculum =
+          !projectRepo ||
+          projectRepo.owner.toLowerCase() !== repo.owner.toLowerCase() ||
+          projectRepo.repo.toLowerCase() !== repo.repo.toLowerCase()
         const data = await githubFetch(`https://api.github.com/repos/${repo.owner}/${repo.repo}`)
+        const contents = await githubFetch(`https://api.github.com/repos/${repo.owner}/${repo.repo}/contents/`)
+        if (!Array.isArray(contents)) {
+          throw new Error('Unable to verify repository contents')
+        }
+        const hasReadme = contents.some(
+          (item: { name?: string; type?: string }) =>
+            item.type === 'file' && item.name?.toLowerCase() === 'readme.md'
+        )
+        const hasLicense = contents.some(
+          (item: { name?: string; type?: string }) =>
+            item.type === 'file' && ['license', 'licence'].includes(item.name?.toLowerCase() || '')
+        )
+        const unexpectedItems = contents.filter((item: { name?: string; type?: string }) => {
+          if (item.type !== 'file') return true
+          const name = item.name?.toLowerCase() || ''
+          return name !== 'readme.md' && name !== 'license' && name !== 'licence'
+        })
+        const hasOnlyReadmeAndLicense = hasReadme && hasLicense && unexpectedItems.length === 0
         result = {
-          success: !data.private,
+          success: !data.private && isDifferentFromCurriculum && hasOnlyReadmeAndLicense,
           checks: [
             { label: 'Repository found', passed: true, detail: data.full_name },
-            { label: 'Visibility check', passed: !data.private, detail: data.private ? 'Private' : 'Public' }
+            {
+              label: 'Different from curriculum repo',
+              passed: isDifferentFromCurriculum,
+              detail: isDifferentFromCurriculum ? 'Different repository' : 'Matches curriculum repository'
+            },
+            { label: 'Visibility check', passed: !data.private, detail: data.private ? 'Private' : 'Public' },
+            {
+              label: 'Only README.md and LICENSE',
+              passed: hasOnlyReadmeAndLicense,
+              detail: hasOnlyReadmeAndLicense
+                ? 'Only README.md and LICENSE/LICENCE found'
+                : 'Extra files found or missing README/LICENSE'
+            }
           ]
         }
         

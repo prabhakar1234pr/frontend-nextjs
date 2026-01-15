@@ -13,7 +13,6 @@ import {
   type DayDetails,
   type ConceptDetails,
 } from '../lib/api-roadmap'
-import Header from '../components/Header'
 import WorkplaceIDE from '../components/workspace/WorkplaceIDE'
 
 // Type for next navigation target
@@ -112,9 +111,8 @@ export default function WorkspaceClient() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#1e1e1e]">
-        <Header />
-        <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
+      <div className="h-screen overflow-hidden bg-[#1e1e1e]">
+        <div className="flex items-center justify-center h-screen">
           <div className="text-white">Loading task...</div>
         </div>
       </div>
@@ -123,9 +121,8 @@ export default function WorkspaceClient() {
 
   if (error || !taskDetails) {
     return (
-      <div className="min-h-screen bg-[#1e1e1e]">
-        <Header />
-        <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
+      <div className="h-screen overflow-hidden bg-[#1e1e1e]">
+        <div className="flex items-center justify-center h-screen">
           <div className="text-red-400">{error || 'Task not found'}</div>
         </div>
       </div>
@@ -197,8 +194,7 @@ export default function WorkspaceClient() {
   }
 
   return (
-    <div className="min-h-screen bg-[#1e1e1e]">
-      <Header />
+    <div className="h-screen overflow-hidden bg-[#1e1e1e]">
       <WorkplaceIDE
         taskDetails={taskDetails}
         initialCompleted={isTaskCompleted}

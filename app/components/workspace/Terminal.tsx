@@ -37,13 +37,15 @@ export default function TerminalComponent({
   const listenersRef = useRef<import('@xterm/xterm').IDisposable[]>([])
   const resizeObserverRef = useRef<ResizeObserver | null>(null)
   const initializedRef = useRef(false)
+  const terminalReadyRef = useRef(false)
   const [token, setToken] = useState<string | null>(null)
   const [terminalReady, setTerminalReady] = useState(false)
 
   // Terminal hook callbacks
   const handleOutput = useCallback((data: string) => {
     log('OUTPUT', `Received ${data.length} chars`)
-    terminalRef.current?.write(data)
+    if (!terminalReadyRef.current || !terminalRef.current) return
+    terminalRef.current.write(data)
   }, [])
 
   const handleConnected = useCallback((sessionId: string) => {
@@ -53,12 +55,14 @@ export default function TerminalComponent({
 
   const handleError = useCallback((message: string) => {
     log('ERROR', message)
-    terminalRef.current?.write(`\r\n\x1b[31mError: ${message}\x1b[0m\r\n`)
+    if (!terminalReadyRef.current || !terminalRef.current) return
+    terminalRef.current.write(`\r\n\x1b[31mError: ${message}\x1b[0m\r\n`)
   }, [])
 
   const handleDisconnect = useCallback(() => {
     log('DISCONNECT', 'Disconnected from terminal')
-    terminalRef.current?.write('\r\n\x1b[33mDisconnected from terminal\x1b[0m\r\n')
+    if (!terminalReadyRef.current || !terminalRef.current) return
+    terminalRef.current.write('\r\n\x1b[33mDisconnected from terminal\x1b[0m\r\n')
   }, [])
 
   // Initialize terminal hook (will be connected after token is fetched)
@@ -177,6 +181,7 @@ export default function TerminalComponent({
       terminalRef.current = term
       fitAddonRef.current = fitAddon
       setTerminalReady(true)
+      terminalReadyRef.current = true
       log('INIT', 'Terminal instance created and opened')
 
     // Handle terminal input
@@ -299,6 +304,7 @@ export default function TerminalComponent({
     return () => {
       log('CLEANUP', 'Disposing terminal components...')
       disconnect()
+      terminalReadyRef.current = false
       
       // Clean up listeners explicitly
       listenersRef.current.forEach(l => l.dispose())

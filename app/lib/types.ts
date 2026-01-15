@@ -7,7 +7,7 @@
  */
 export interface CreateProjectData {
   github_url: string
-  skill_level: 'beginner' | 'intermediate' | 'expert'
+  skill_level: 'beginner' | 'intermediate' | 'advanced'
   target_days: number
 }
 

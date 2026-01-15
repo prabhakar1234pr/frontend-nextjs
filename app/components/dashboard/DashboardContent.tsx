@@ -151,7 +151,7 @@ export default function DashboardContent({ projects: initialProjects }: Dashboar
         return "Big things have small beginnings."
       case 'intermediate':
         return "Complexity is your playground."
-      case 'expert':
+      case 'advanced':
         return "Architecting the future."
       default:
         return "Build your vision."

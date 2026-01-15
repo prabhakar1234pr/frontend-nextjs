@@ -36,7 +36,7 @@ export interface Task {
   order_index: number
   title: string
   description: string
-  task_type: 'coding' | 'reading' | 'research' | 'quiz' | 'github_profile' | 'create_repo' | 'verify_commit'
+  task_type: 'coding' | 'reading' | 'research' | 'quiz' | 'github_profile' | 'create_repo' | 'verify_commit' | 'github_connect'
   estimated_minutes: number
   difficulty: 'easy' | 'medium' | 'hard'
   hints: string[]

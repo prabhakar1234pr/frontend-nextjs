@@ -4,10 +4,24 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@clerk/nextjs'
 import { type Task, completeTask } from '../../lib/api-roadmap'
 import { getOrCreateWorkspace, readFile, writeFile } from '../../lib/api-workspace'
+import { 
+  getGitStatus, 
+  getCommits, 
+  pullFromRemote, 
+  pushToRemote, 
+  checkExternalCommits, 
+  resetExternalCommits,
+  type GitCommitEntry,
+  type GitStatusResponse
+} from '../../lib/api-git'
+import { startTaskSession, completeTaskSession } from '../../lib/api-task-sessions'
 import { useWorkspaceStore } from '../../hooks/useWorkspaceStore'
 import MonacoEditor from './MonacoEditor'
 import FileExplorer from './FileExplorer'
 import TerminalTabs from './TerminalTabs'
+import GitPanel from './GitPanel'
+import UncommittedChangesDialog from './UncommittedChangesDialog'
+import ExternalCommitsNotification from './ExternalCommitsNotification'
 import { 
   ResizableHandle, 
   ResizablePanel, 
@@ -19,7 +33,6 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
 import { 
   Save, 
-  Play, 
   CheckCircle2, 
   X, 
   FileCode, 
@@ -29,7 +42,6 @@ import {
   Loader2,
   Clock
 } from 'lucide-react'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../../components/ui/tooltip'
 
 interface CodeEditorProps {
@@ -60,10 +72,18 @@ export default function CodeEditor({ task, projectId, onComplete, initialComplet
   const [workspaceError, setWorkspaceError] = useState<string | null>(null)
   const [isLoadingFile, setIsLoadingFile] = useState(false)
   const [output, setOutput] = useState('')
-  const [isRunning, setIsRunning] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isCompleted, setIsCompleted] = useState(initialCompleted || false)
   const [isVerifying, setIsVerifying] = useState(false)
+  const [gitStatus, setGitStatus] = useState<GitStatusResponse | null>(null)
+  const [gitCommits, setGitCommits] = useState<GitCommitEntry[]>([])
+  const [gitLoading, setGitLoading] = useState(false)
+  const [isGitPanelOpen, setIsGitPanelOpen] = useState(false)
+  const [uncommittedDialogOpen, setUncommittedDialogOpen] = useState(false)
+  const [uncommittedFiles, setUncommittedFiles] = useState<string[]>([])
+  const [externalCommits, setExternalCommits] = useState<GitCommitEntry[]>([])
+  const [externalDismissed, setExternalDismissed] = useState(false)
+  const [taskSessionId, setTaskSessionId] = useState<string | null>(null)
 
   const activeFile = openFiles.find(f => f.path === activeFilePath)
 
@@ -92,6 +112,25 @@ export default function CodeEditor({ task, projectId, onComplete, initialComplet
     initWorkspace()
     return () => { mounted = false }
   }, [projectId, getToken, setWorkspaceId])
+
+  useEffect(() => {
+    let mounted = true
+    async function initTaskSession() {
+      if (!workspaceId || taskSessionId) return
+      try {
+        const token = await getToken()
+        if (!token || !mounted) return
+        const response = await startTaskSession(task.task_id, workspaceId, token)
+        if (response.session?.session_id && mounted) {
+          setTaskSessionId(response.session.session_id)
+        }
+      } catch (err) {
+        console.error('Failed to start task session:', err)
+      }
+    }
+    initTaskSession()
+    return () => { mounted = false }
+  }, [workspaceId, task.task_id, getToken, taskSessionId])
 
   // Handle file selection from Explorer
   const handleFileSelect = useCallback(async (path: string) => {
@@ -132,16 +171,109 @@ export default function CodeEditor({ task, projectId, onComplete, initialComplet
     }
   }, [workspaceId, activeFile, getToken, markFileSaved])
 
-  const handleRun = useCallback(async () => {
-    if (!workspaceId || !activeFile) return
-    setIsRunning(true)
-    setOutput('Running code...')
-    // For now, just a placeholder. Real implementation would send to terminal service.
-    setTimeout(() => {
-      setOutput(prev => prev + '\nExecution finished.')
-      setIsRunning(false)
-    }, 1000)
-  }, [workspaceId, activeFile])
+  const refreshGitData = useCallback(async () => {
+    if (!workspaceId) return
+    setGitLoading(true)
+    try {
+      const token = await getToken()
+      if (!token) return
+      const [status, commits] = await Promise.all([
+        getGitStatus(workspaceId, token),
+        getCommits(workspaceId, token)
+      ])
+      setGitStatus(status)
+      setGitCommits(commits.commits || [])
+
+      if (!externalDismissed) {
+        const external = await checkExternalCommits(workspaceId, token)
+        if (external.has_external_commits && external.external_commits) {
+          setExternalCommits(external.external_commits)
+        }
+      }
+    } catch (err) {
+      console.error('Failed to refresh git status:', err)
+    } finally {
+      setGitLoading(false)
+    }
+  }, [workspaceId, getToken, externalDismissed])
+
+  useEffect(() => {
+    if (!workspaceId) return
+    refreshGitData()
+  }, [workspaceId, refreshGitData])
+
+  const handlePull = useCallback(async () => {
+    if (!workspaceId) return
+    setGitLoading(true)
+    try {
+      const token = await getToken()
+      if (!token) return
+      const result = await pullFromRemote(workspaceId, token, 'main')
+      if (result.conflict === 'uncommitted') {
+        setUncommittedFiles(result.files || [])
+        setUncommittedDialogOpen(true)
+        return
+      }
+      setOutput('✓ Pull completed')
+      await refreshGitData()
+    } catch (err) {
+      setOutput(`Pull failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    } finally {
+      setGitLoading(false)
+    }
+  }, [workspaceId, getToken, refreshGitData])
+
+  const handlePush = useCallback(async () => {
+    if (!workspaceId) return
+    setGitLoading(true)
+    try {
+      const token = await getToken()
+      if (!token) return
+      await pushToRemote(workspaceId, token, 'main')
+      setOutput('✓ Push completed')
+      await refreshGitData()
+    } catch (err) {
+      setOutput(`Push failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    } finally {
+      setGitLoading(false)
+    }
+  }, [workspaceId, getToken, refreshGitData])
+
+  const handleUncommittedAction = useCallback(async (action: 'commit' | 'stash' | 'discard' | 'cancel') => {
+    setUncommittedDialogOpen(false)
+    if (action === 'cancel') return
+    if (!workspaceId) return
+    setGitLoading(true)
+    try {
+      const token = await getToken()
+      if (!token) return
+      await pullFromRemote(workspaceId, token, 'main', action)
+      setOutput(`✓ Pull completed (${action})`)
+      await refreshGitData()
+    } catch (err) {
+      setOutput(`Pull failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    } finally {
+      setGitLoading(false)
+    }
+  }, [workspaceId, getToken, refreshGitData])
+
+  const handleExternalReset = useCallback(async () => {
+    if (!workspaceId) return
+    setGitLoading(true)
+    try {
+      const token = await getToken()
+      if (!token) return
+      await resetExternalCommits(workspaceId, token)
+      setExternalCommits([])
+      setExternalDismissed(true)
+      setOutput('✓ External commits reset')
+      await refreshGitData()
+    } catch (err) {
+      setOutput(`Reset failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    } finally {
+      setGitLoading(false)
+    }
+  }, [workspaceId, getToken, refreshGitData])
 
   const handleVerifyTask = async () => {
     const hasCode = openFiles.some(f => f.content.trim().length > 10)
@@ -154,6 +286,9 @@ export default function CodeEditor({ task, projectId, onComplete, initialComplet
       const token = await getToken()
       if (!token) return
       await completeTask(projectId, task.task_id, token)
+      if (taskSessionId) {
+        await completeTaskSession(taskSessionId, token)
+      }
       setIsCompleted(true)
       onComplete()
       setOutput('✓ Task verified successfully!')
@@ -198,6 +333,12 @@ export default function CodeEditor({ task, projectId, onComplete, initialComplet
 
   return (
     <div className="h-full bg-[#09090b] flex flex-col overflow-hidden">
+      <UncommittedChangesDialog
+        open={uncommittedDialogOpen}
+        files={uncommittedFiles}
+        onClose={() => setUncommittedDialogOpen(false)}
+        onAction={handleUncommittedAction}
+      />
       <ResizablePanelGroup direction="horizontal">
         <ResizablePanel defaultSize={18} minSize={12} maxSize={30} className="border-r border-zinc-800 bg-[#09090b]">
           {workspaceId ? (
@@ -205,6 +346,14 @@ export default function CodeEditor({ task, projectId, onComplete, initialComplet
               workspaceId={workspaceId}
               onFileSelect={handleFileSelect}
               selectedFile={activeFilePath || undefined}
+              isGitPanelOpen={isGitPanelOpen}
+              onToggleGitPanel={() => setIsGitPanelOpen(prev => !prev)}
+              gitStatus={gitStatus}
+              gitCommits={gitCommits}
+              gitLoading={gitLoading}
+              onPull={handlePull}
+              onPush={handlePush}
+              onGitRefresh={refreshGitData}
             />
           ) : (
             <div className="p-4 flex flex-col gap-2">
@@ -259,6 +408,11 @@ export default function CodeEditor({ task, projectId, onComplete, initialComplet
                     {activeFilePath || 'No file selected'}
                   </span>
                   {isLoadingFile && <Loader2 className="w-3 h-3 text-zinc-500 animate-spin" />}
+                  {gitStatus && (
+                    <Badge variant="outline" className="text-[9px] uppercase font-bold tracking-widest bg-zinc-900 border-zinc-800 text-zinc-400">
+                      {gitStatus.branch || 'branch'} ↑ {gitStatus.ahead || 0} ↓ {gitStatus.behind || 0}
+                    </Badge>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
@@ -271,15 +425,6 @@ export default function CodeEditor({ task, projectId, onComplete, initialComplet
                     <Save className="w-3.5 h-3.5 mr-1.5" />
                     Save
                   </Button>
-                      <Button
-                        size="sm"
-                        onClick={handleRun}
-                        disabled={isRunning || !activeFile}
-                        className="h-7 px-3 text-[11px] font-medium bg-emerald-600/10 text-emerald-500 hover:bg-emerald-600/20 border border-emerald-600/20"
-                      >
-                        {isRunning ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Play className="w-3.5 h-3.5 mr-1.5" />}
-                        Run
-                      </Button>
                 </div>
               </div>
 
@@ -338,8 +483,18 @@ export default function CodeEditor({ task, projectId, onComplete, initialComplet
             )}
           </div>
 
-          <ScrollArea className="flex-1">
+          <div className="flex-1 overflow-y-auto">
             <div className="p-6">
+              {!externalDismissed && externalCommits.length > 0 && (
+                <div className="mb-4">
+                  <ExternalCommitsNotification
+                    commits={externalCommits}
+                    onReset={handleExternalReset}
+                    onDismiss={() => setExternalDismissed(true)}
+                  />
+                </div>
+              )}
+              {isGitPanelOpen && null}
               <h2 className="text-lg font-bold text-white mb-4 leading-tight">{task.title}</h2>
               <div className="flex items-center gap-3 mb-6">
                 <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-tighter bg-zinc-900 border-zinc-800 text-zinc-400">
@@ -371,7 +526,7 @@ export default function CodeEditor({ task, projectId, onComplete, initialComplet
                 </div>
               )}
             </div>
-          </ScrollArea>
+          </div>
 
           <div className="p-4 border-t border-zinc-800 bg-[#0c0c0e]">
             {isCompleted ? (

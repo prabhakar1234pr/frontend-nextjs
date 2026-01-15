@@ -126,20 +126,19 @@ export default function TerminalTabs({ workspaceId }: TerminalTabsProps) {
       </div>
 
       {/* Terminal content */}
-      <div className="flex-1 min-h-0 relative">
-        {tabs.map((tab) => (
-          <div
-            key={tab.id}
-            className={`absolute inset-0 ${activeTabId === tab.id ? 'block' : 'hidden'}`}
-          >
+      <div className="flex-1 min-h-0">
+        {(() => {
+          const activeTab = tabs.find(tab => tab.id === activeTabId)
+          if (!activeTab) return null
+          return (
             <Terminal
               workspaceId={workspaceId}
-              sessionId={tab.sessionId}
-              onSessionCreated={(sessionId) => handleSessionCreated(tab.id, sessionId)}
-              isActive={activeTabId === tab.id}
+              sessionId={activeTab.sessionId}
+              onSessionCreated={(sessionId) => handleSessionCreated(activeTab.id, sessionId)}
+              isActive
             />
-          </div>
-        ))}
+          )
+        })()}
       </div>
     </div>
   )

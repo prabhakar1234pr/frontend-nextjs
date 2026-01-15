@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@clerk/nextjs'
 import { listFiles, createFile, deleteFile, type FileItem } from '../../lib/api-workspace'
+import GitPanel from './GitPanel'
+import type { GitCommitEntry, GitStatusResponse } from '../../lib/api-git'
 import { useWorkspaceStore } from '../../hooks/useWorkspaceStore'
 import { 
   File, 
@@ -19,7 +21,8 @@ import {
   FileTerminal,
   Loader2,
   MoreVertical,
-  AlertCircle
+  AlertCircle,
+  GitBranch
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -36,6 +39,14 @@ interface FileExplorerProps {
   onFileSelect: (path: string) => void
   selectedFile?: string
   onRefresh?: () => void
+  isGitPanelOpen?: boolean
+  onToggleGitPanel?: () => void
+  gitStatus?: GitStatusResponse | null
+  gitCommits?: GitCommitEntry[]
+  gitLoading?: boolean
+  onPull?: () => void
+  onPush?: () => void
+  onGitRefresh?: () => void
 }
 
 function FileIcon({ filename, isDirectory }: { filename: string; isDirectory: boolean }) {
@@ -54,6 +65,14 @@ export default function FileExplorer({
   onFileSelect,
   selectedFile,
   onRefresh,
+  isGitPanelOpen,
+  onToggleGitPanel,
+  gitStatus,
+  gitCommits = [],
+  gitLoading,
+  onPull,
+  onPush,
+  onGitRefresh,
 }: FileExplorerProps) {
   const { getToken } = useAuth()
   const { closeFilesUnderPath } = useWorkspaceStore()
@@ -204,6 +223,15 @@ export default function FileExplorer({
       <div className="h-10 flex items-center justify-between px-4 border-b border-zinc-800 bg-[#0c0c0e]">
         <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Explorer</span>
         <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className={`h-6 w-6 ${isGitPanelOpen ? 'text-blue-400' : 'text-zinc-500 hover:text-zinc-200'}`}
+            onClick={onToggleGitPanel}
+            title="Git Status"
+          >
+            <GitBranch className="w-3.5 h-3.5" />
+          </Button>
           <Button 
             variant="ghost" 
             size="icon" 
@@ -230,6 +258,19 @@ export default function FileExplorer({
           </Button>
         </div>
       </div>
+
+      {isGitPanelOpen && (
+        <div className="p-3 border-b border-zinc-800">
+          <GitPanel
+            status={gitStatus || null}
+            commits={gitCommits}
+            isLoading={gitLoading}
+            onPull={onPull || (() => {})}
+            onPush={onPush || (() => {})}
+            onRefresh={onGitRefresh || (() => {})}
+          />
+        </div>
+      )}
 
       {isCreating && (
         <div className="p-3 bg-zinc-900 border-b border-zinc-800">

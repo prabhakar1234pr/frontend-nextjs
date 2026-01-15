@@ -24,7 +24,7 @@ interface CreateProjectModalProps {
   onProjectCreated?: () => void
 }
 
-type ExperienceLevel = 'beginner' | 'intermediate' | 'expert'
+type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced'
 
 export default function CreateProjectModal({ isOpen, onClose, onProjectCreated }: CreateProjectModalProps) {
   const { getToken } = useAuth()
@@ -133,7 +133,7 @@ export default function CreateProjectModal({ isOpen, onClose, onProjectCreated }
               >
                 <option value="beginner">Beginner (New to stack)</option>
                 <option value="intermediate">Intermediate (Some context)</option>
-                <option value="expert">Expert (Advanced level)</option>
+                <option value="advanced">Advanced</option>
               </select>
             </div>
 
