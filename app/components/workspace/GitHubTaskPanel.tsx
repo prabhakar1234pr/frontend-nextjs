@@ -526,7 +526,7 @@ export default function GitHubTaskPanel({
           </div>
         )}
 
-        {task.hints && task.hints.length > 0 && (
+        {task.hints && Array.isArray(task.hints) && task.hints.length > 0 && (
           <div className="grid grid-cols-1 gap-3">
             {task.hints.map((hint, i) => (
               <div

@@ -283,19 +283,47 @@ export default function RoadmapPage({ projectId }: RoadmapPageProps) {
         {/* Kanban Board */}
         <div className="flex-1 min-h-0 h-full">
           {dayDetails && (
-            <KanbanBoard
-              concepts={dayDetails.concepts}
-              currentConceptId={selectedConceptId}
-              conceptProgressMap={conceptProgressMap}
-              projectId={projectId}
-              taskProgress={taskProgressMap}
-              onConceptClick={handleConceptClick}
-              onStartConcept={handleStartConcept}
-              onCompleteConcept={handleCompleteConcept}
-              conceptDetails={conceptDetails}
-              loadingDetails={conceptDetailsLoading}
-              onProgressChange={refetchProgress}
-            />
+            <>
+              {/* Debug: Log concepts being passed to KanbanBoard */}
+              {process.env.NODE_ENV === "development" && (
+                <div className="hidden">
+                  {console.log("📊 Concepts for KanbanBoard:", {
+                    dayId: selectedDayId,
+                    dayNumber: dayDetails.day.day_number,
+                    totalConcepts: dayDetails.concepts.length,
+                    concepts: dayDetails.concepts.map((c) => ({
+                      id: c.concept_id,
+                      title: c.title,
+                      generated_status: c.generated_status,
+                      has_content: !!c.content,
+                      content_length: c.content?.length || 0,
+                      order_index: c.order_index,
+                    })),
+                    selectedConceptId: selectedConceptId,
+                    conceptProgressMapKeys: Object.keys(conceptProgressMap),
+                    conceptDetailsConceptId:
+                      conceptDetails?.concept?.concept_id,
+                    conceptDetailsHasContent:
+                      !!conceptDetails?.concept?.content,
+                    conceptDetailsContentLength:
+                      conceptDetails?.concept?.content?.length || 0,
+                  })}
+                </div>
+              )}
+              <KanbanBoard
+                concepts={dayDetails.concepts}
+                currentConceptId={selectedConceptId}
+                conceptProgressMap={conceptProgressMap}
+                projectId={projectId}
+                taskProgress={taskProgressMap}
+                onConceptClick={handleConceptClick}
+                onStartConcept={handleStartConcept}
+                onCompleteConcept={handleCompleteConcept}
+                conceptDetails={conceptDetails}
+                loadingDetails={conceptDetailsLoading}
+                onProgressChange={refetchProgress}
+              />
+            </>
           )}
         </div>
       </div>

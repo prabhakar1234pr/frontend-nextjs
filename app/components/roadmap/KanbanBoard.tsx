@@ -137,8 +137,28 @@ export default function KanbanBoard({
       return optimisticUpdates[concept.concept_id];
     }
     const progress = conceptProgressMap[concept.concept_id];
+    // Default to "todo" if no progress entry exists
+    // This ensures all concepts are displayed, even if they haven't been started yet
     return progress?.progress_status || "todo";
   };
+
+  // Debug: Log if concepts are being filtered incorrectly
+  if (process.env.NODE_ENV === "development" && concepts.length > 0) {
+    const conceptsWithoutProgress = concepts.filter(
+      (c) => !conceptProgressMap[c.concept_id]
+    );
+    if (conceptsWithoutProgress.length > 0) {
+      console.log(
+        "📋 Concepts without progress entries (will default to 'todo'):",
+        conceptsWithoutProgress.map((c) => ({
+          id: c.concept_id,
+          title: c.title,
+          generated_status: c.generated_status,
+          has_content: !!c.content,
+        }))
+      );
+    }
+  }
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(String(event.active.id));
@@ -207,9 +227,30 @@ export default function KanbanBoard({
     }
   };
 
+  // Filter concepts by progress status
+  // Note: Concepts without progress entries default to "todo" status
+  // This ensures all concepts are displayed, even if they haven't been started yet
   const todoConcepts = concepts.filter((c) => getConceptStatus(c) === "todo");
   const doingConcepts = concepts.filter((c) => getConceptStatus(c) === "doing");
   const doneConcepts = concepts.filter((c) => getConceptStatus(c) === "done");
+
+  // Debug: Log concept counts to help diagnose rendering issues
+  if (
+    concepts.length > 0 &&
+    todoConcepts.length === 0 &&
+    doingConcepts.length === 0 &&
+    doneConcepts.length === 0
+  ) {
+    console.warn("⚠️ All concepts filtered out:", {
+      total: concepts.length,
+      concepts: concepts.map((c) => ({
+        id: c.concept_id,
+        title: c.title,
+        generated_status: c.generated_status,
+        progress_status: getConceptStatus(c),
+      })),
+    });
+  }
 
   return (
     <DndContext

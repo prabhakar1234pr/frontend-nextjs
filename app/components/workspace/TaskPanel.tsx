@@ -43,7 +43,7 @@ export default function TaskPanel({
             <p className="whitespace-pre-wrap">{task.description}</p>
           </div>
 
-          {task.hints && task.hints.length > 0 && (
+          {task.hints && Array.isArray(task.hints) && task.hints.length > 0 && (
             <div className="mt-8 pt-8 border-t border-zinc-800">
               <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4">
                 Implementation Hints

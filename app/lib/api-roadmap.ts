@@ -14,7 +14,12 @@ export interface RoadmapDay {
   theme: string;
   description: string | null;
   estimated_minutes: number;
-  generated_status: "pending" | "generating" | "generated" | "failed";
+  generated_status:
+    | "pending"
+    | "generating"
+    | "generated"
+    | "generated_with_errors"
+    | "failed";
   created_at: string;
 }
 
@@ -26,8 +31,16 @@ export interface Concept {
   description: string | null;
   content: string | null;
   estimated_minutes: number;
-  generated_status: "pending" | "generating" | "generated" | "failed";
+  generated_status:
+    | "pending"
+    | "generating"
+    | "generated"
+    | "generated_with_errors"
+    | "failed";
   created_at: string;
+  difficulty?: "easy" | "medium" | "hard" | null;
+  depends_on?: string[];
+  repo_anchors?: string[];
 }
 
 export interface Task {
@@ -46,8 +59,8 @@ export interface Task {
     | "verify_commit"
     | "github_connect";
   estimated_minutes: number;
-  difficulty: "easy" | "medium" | "hard";
-  hints: string[];
+  difficulty: "easy" | "medium" | "hard" | null;
+  hints: string[] | null;
   solution: string | null;
   verification_data: Record<string, unknown> | null;
   generated_status: "pending" | "generating" | "generated" | "failed";
@@ -178,18 +191,47 @@ export async function getConceptDetails(
   }
 
   const headers = getAuthHeadersClient(token);
-  const response = await fetch(
-    `${API_BASE_URL}/api/roadmap/${projectId}/concept/${conceptId}`,
-    {
-      headers,
-    }
-  );
+  const url = `${API_BASE_URL}/api/roadmap/${projectId}/concept/${conceptId}`;
+
+  // Debug logging
+  if (process.env.NODE_ENV === "development") {
+    console.log(`🔍 Fetching concept details: ${url}`, {
+      projectId,
+      conceptId,
+    });
+  }
+
+  const response = await fetch(url, { headers });
 
   if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`❌ Failed to fetch concept details:`, {
+      status: response.status,
+      statusText: response.statusText,
+      error: errorText,
+      url,
+    });
     throw new Error(`Failed to fetch concept details: ${response.statusText}`);
   }
 
-  return response.json();
+  const data = await response.json();
+
+  // Debug logging for response
+  if (process.env.NODE_ENV === "development") {
+    console.log(`📥 Concept details response:`, {
+      concept_id: data.concept?.concept_id,
+      title: data.concept?.title,
+      generated_status: data.concept?.generated_status,
+      has_content: !!data.concept?.content,
+      content_length: data.concept?.content?.length || 0,
+      content_preview: data.concept?.content?.substring(0, 100) || "None",
+      tasks_count: data.tasks?.length || 0,
+      tasks:
+        data.tasks?.map((t: Task) => ({ id: t.task_id, title: t.title })) || [],
+    });
+  }
+
+  return data;
 }
 
 export async function getGenerationStatus(

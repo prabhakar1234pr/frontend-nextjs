@@ -58,6 +58,23 @@ export default function ConceptDetailPanel({
   }
 
   const { concept, tasks } = conceptDetails;
+
+  // Debug: Log concept details to help diagnose rendering issues
+  if (process.env.NODE_ENV === "development") {
+    console.log("📄 ConceptDetailPanel received:", {
+      concept_id: concept.concept_id,
+      title: concept.title,
+      generated_status: concept.generated_status,
+      has_content: !!concept.content,
+      content_length: concept.content?.length || 0,
+      tasks_count: tasks.length,
+      tasks: tasks.map((t) => ({
+        id: t.task_id,
+        title: t.title,
+        generated_status: t.generated_status,
+      })),
+    });
+  }
   const progress = conceptProgress[concept.concept_id];
   const isContentRead = progress?.content_read || false;
   const completedTasksCount = tasks.filter(
@@ -178,6 +195,22 @@ export default function ConceptDetailPanel({
           {/* Content and Tasks Boxes */}
           <div className="space-y-3">
             {/* Content Box */}
+            {/* Debug: Show message if content is missing but status suggests it should exist */}
+            {!concept.content && (
+              <div className="w-full p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl">
+                <p className="text-[11px] text-yellow-500 font-medium mb-2">
+                  ⚠️ No content available for this concept.
+                </p>
+                <p className="text-[10px] text-yellow-500/70">
+                  Status: {concept.generated_status} | Concept ID:{" "}
+                  {concept.concept_id}
+                </p>
+                <p className="text-[10px] text-yellow-500/70 mt-1">
+                  Check backend logs or use debug endpoint: /api/roadmap/
+                  {projectId}/concept/{concept.concept_id}/debug
+                </p>
+              </div>
+            )}
             {concept.content && (
               <button
                 onClick={handleContentClick}
@@ -217,6 +250,22 @@ export default function ConceptDetailPanel({
             )}
 
             {/* Tasks Box */}
+            {/* Debug: Show message if tasks are missing */}
+            {tasks.length === 0 && (
+              <div className="w-full p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl">
+                <p className="text-[11px] text-yellow-500 font-medium mb-2">
+                  ⚠️ No tasks found for this concept.
+                </p>
+                <p className="text-[10px] text-yellow-500/70">
+                  Status: {concept.generated_status} | Concept ID:{" "}
+                  {concept.concept_id}
+                </p>
+                <p className="text-[10px] text-yellow-500/70 mt-1">
+                  Check backend logs or use debug endpoint: /api/roadmap/
+                  {projectId}/concept/{concept.concept_id}/debug
+                </p>
+              </div>
+            )}
             {tasks.length > 0 && (
               <div className="border border-zinc-800 rounded-xl overflow-hidden bg-zinc-900/30">
                 <button
