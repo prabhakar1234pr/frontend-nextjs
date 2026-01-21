@@ -351,7 +351,15 @@ export async function renameFile(
     const error = await response
       .json()
       .catch(() => ({ detail: "Failed to rename file" }));
-    throw new Error(error.detail || "Failed to rename file");
+    const errorMessage =
+      error.detail || error.message || "Failed to rename file";
+    console.error("Rename API error:", {
+      oldPath,
+      newPath,
+      error,
+      status: response.status,
+    });
+    throw new Error(errorMessage);
   }
 }
 

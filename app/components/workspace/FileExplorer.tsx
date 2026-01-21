@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@clerk/nextjs";
 import {
   listFiles,
@@ -27,6 +27,7 @@ import {
   MoreVertical,
   AlertCircle,
   Pencil,
+  GripVertical,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -35,6 +36,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -88,9 +90,16 @@ export default function FileExplorer({
   const [isCreating, setIsCreating] = useState(false);
   const [newFileName, setNewFileName] = useState("");
   const [createType, setCreateType] = useState<"file" | "folder">("file");
+  const [createParentPath, setCreateParentPath] =
+    useState<string>("/workspace");
   const [isRenaming, setIsRenaming] = useState(false);
   const [renamingPath, setRenamingPath] = useState<string | null>(null);
   const [newFileNameForRename, setNewFileNameForRename] = useState("");
+
+  // Drag and drop state
+  const [draggedItem, setDraggedItem] = useState<FileItem | null>(null);
+  const [dragOverPath, setDragOverPath] = useState<string | null>(null);
+  const dragCounterRef = useRef(0);
 
   const loadRootFiles = useCallback(async () => {
     try {
@@ -110,6 +119,20 @@ export default function FileExplorer({
     loadRootFiles();
   }, [loadRootFiles]);
 
+  const loadChildren = useCallback(
+    async (path: string) => {
+      const token = await getToken();
+      if (!token) return;
+      try {
+        const files = await listFiles(workspaceId, path, token);
+        setChildrenMap(new Map(childrenMap).set(path, files));
+      } catch (err) {
+        console.error("Error loading children:", err);
+      }
+    },
+    [workspaceId, getToken, childrenMap]
+  );
+
   const handleToggle = async (path: string) => {
     const next = new Set(expandedFolders);
     if (next.has(path)) {
@@ -117,11 +140,7 @@ export default function FileExplorer({
     } else {
       next.add(path);
       if (!childrenMap.has(path)) {
-        const token = await getToken();
-        if (token) {
-          const files = await listFiles(workspaceId, path, token);
-          setChildrenMap(new Map(childrenMap).set(path, files));
-        }
+        await loadChildren(path);
       }
     }
     setExpandedFolders(next);
@@ -133,23 +152,16 @@ export default function FileExplorer({
       if (!token) return;
 
       setError(null);
-      // Close any open files under this path (handles files and directories)
-      // This must happen BEFORE deletion to ensure the file is closed
       closeFilesUnderPath(path);
-
-      // Small delay to ensure file closing completes
       await new Promise((resolve) => setTimeout(resolve, 100));
 
       await deleteFile(workspaceId, path, token);
 
-      // Refresh file list
       loadRootFiles();
       setChildrenMap(new Map());
       onRefresh?.();
 
-      // Refresh git status to detect deleted file
       if (onGitRefresh) {
-        // Small delay to ensure git detects the deletion
         setTimeout(() => {
           onGitRefresh();
         }, 300);
@@ -157,7 +169,6 @@ export default function FileExplorer({
     } catch (err) {
       console.error("Delete error:", err);
       setError(err instanceof Error ? err.message : "Failed to delete file");
-      // Auto-clear error after 3 seconds
       setTimeout(() => setError(null), 3000);
     }
   };
@@ -168,17 +179,32 @@ export default function FileExplorer({
     try {
       const token = await getToken();
       if (!token) return;
-      const path = `/workspace/${newFileName.trim()}`;
+
+      // Construct path relative to parent folder
+      const parentPath =
+        createParentPath === "/workspace" ? "/workspace" : createParentPath;
+      const path = `${parentPath}/${newFileName.trim()}`;
+
       await createFile(workspaceId, path, createType === "folder", token);
       setIsCreating(false);
       setNewFileName("");
-      loadRootFiles();
+      setCreateParentPath("/workspace");
+
+      // Refresh the parent folder's children
+      if (createParentPath !== "/workspace") {
+        await loadChildren(createParentPath);
+        // Expand parent if it's not already expanded
+        if (!expandedFolders.has(createParentPath)) {
+          setExpandedFolders(new Set(expandedFolders).add(createParentPath));
+        }
+      } else {
+        loadRootFiles();
+      }
       setChildrenMap(new Map());
       onRefresh?.();
     } catch (err) {
       console.error("Create error:", err);
       setError(err instanceof Error ? err.message : "Failed to create item");
-      // Auto-clear error after 3 seconds
       setTimeout(() => setError(null), 3000);
     }
   };
@@ -190,7 +216,6 @@ export default function FileExplorer({
       const token = await getToken();
       if (!token) return;
 
-      // Get directory path and construct new path
       const pathParts = renamingPath.split("/");
       const directory = pathParts.slice(0, -1).join("/");
       const newPath = directory
@@ -205,22 +230,166 @@ export default function FileExplorer({
       setChildrenMap(new Map());
       onRefresh?.();
 
-      // If the renamed file was selected, update selection
       if (selectedFile === renamingPath) {
         onFileSelect(newPath);
       }
     } catch (err) {
       console.error("Rename error:", err);
       setError(err instanceof Error ? err.message : "Failed to rename file");
-      // Auto-clear error after 3 seconds
       setTimeout(() => setError(null), 3000);
     }
+  };
+
+  const handleMove = async (sourcePath: string, targetPath: string) => {
+    if (sourcePath === targetPath) return;
+
+    // Prevent moving into itself or its children
+    if (targetPath.startsWith(sourcePath + "/")) {
+      setError("Cannot move folder into itself");
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
+
+    setError(null);
+    try {
+      const token = await getToken();
+      if (!token) return;
+
+      // Get source filename
+      const sourceParts = sourcePath.split("/").filter(Boolean);
+      const sourceName = sourceParts[sourceParts.length - 1];
+
+      // Normalize target path (remove trailing slashes, ensure it starts with /workspace)
+      let normalizedTarget = targetPath.trim();
+      if (!normalizedTarget.startsWith("/workspace")) {
+        normalizedTarget = "/workspace";
+      }
+      normalizedTarget = normalizedTarget.replace(/\/+$/, ""); // Remove trailing slashes
+      normalizedTarget = normalizedTarget.replace(/\/+/g, "/"); // Remove double slashes
+
+      // Construct new path - ensure no double slashes
+      let newPath: string;
+      if (normalizedTarget === "/workspace") {
+        newPath = `/workspace/${sourceName}`;
+      } else {
+        newPath = `${normalizedTarget}/${sourceName}`;
+      }
+
+      // Final normalization to remove any double slashes
+      newPath = newPath.replace(/\/+/g, "/");
+
+      // Prevent moving to the same location
+      if (sourcePath === newPath) {
+        console.log("Skipping move - same location");
+        return;
+      }
+
+      console.log(`Moving: ${sourcePath} -> ${newPath}`);
+      await renameFile(workspaceId, sourcePath, newPath, token);
+
+      // Close any open files under the moved path
+      closeFilesUnderPath(sourcePath);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      loadRootFiles();
+      setChildrenMap(new Map());
+      onRefresh?.();
+
+      if (onGitRefresh) {
+        setTimeout(() => {
+          onGitRefresh();
+        }, 300);
+      }
+
+      // Update selection if the moved file was selected
+      if (selectedFile === sourcePath) {
+        onFileSelect(newPath);
+      }
+    } catch (err) {
+      console.error("Move error:", err);
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to move item";
+      setError(`Move failed: ${errorMessage}`);
+      setTimeout(() => setError(null), 5000);
+    }
+  };
+
+  // Drag handlers
+  const handleDragStart = (e: React.DragEvent, item: FileItem) => {
+    setDraggedItem(item);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", item.path);
+  };
+
+  const handleDragOver = (
+    e: React.DragEvent,
+    path: string,
+    isDirectory: boolean
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = "move";
+
+    // Only highlight directories as drop targets
+    if (isDirectory && draggedItem && draggedItem.path !== path) {
+      // Prevent moving into itself or children
+      if (!path.startsWith(draggedItem.path + "/")) {
+        setDragOverPath(path);
+      }
+    } else {
+      setDragOverPath(null);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current--;
+    if (dragCounterRef.current === 0) {
+      setDragOverPath(null);
+    }
+  };
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current++;
+  };
+
+  const handleDrop = (
+    e: React.DragEvent,
+    targetPath: string,
+    isDirectory: boolean
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current = 0;
+    setDragOverPath(null);
+
+    if (!draggedItem) return;
+    if (draggedItem.path === targetPath) return;
+
+    // Allow dropping on directories or root (when targetPath is empty/root)
+    if (isDirectory || !targetPath || targetPath === "/workspace") {
+      const finalTargetPath = isDirectory ? targetPath : "/workspace";
+      handleMove(draggedItem.path, finalTargetPath);
+    }
+    setDraggedItem(null);
+  };
+
+  const startCreateInFolder = (parentPath: string, type: "file" | "folder") => {
+    setCreateParentPath(parentPath);
+    setCreateType(type);
+    setIsCreating(true);
+    setNewFileName("");
   };
 
   const renderNode = (file: FileItem, level: number) => {
     const isExpanded = expandedFolders.has(file.path);
     const isSelected = selectedFile === file.path;
     const children = childrenMap.get(file.path) || [];
+    const isDragged = draggedItem?.path === file.path;
+    const isDragOver = dragOverPath === file.path && file.is_directory;
 
     return (
       <div key={file.path}>
@@ -228,7 +397,11 @@ export default function FileExplorer({
           className={`group flex items-center gap-2 px-3 py-1 cursor-pointer transition-colors ${
             isSelected
               ? "bg-blue-600/20 text-blue-100"
-              : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200"
+              : isDragOver
+                ? "bg-blue-500/30 text-blue-100 border-l-2 border-blue-500"
+                : isDragged
+                  ? "opacity-50"
+                  : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200"
           }`}
           style={{ paddingLeft: `${level * 12 + 12}px` }}
           onClick={() =>
@@ -236,6 +409,12 @@ export default function FileExplorer({
               ? handleToggle(file.path)
               : onFileSelect(file.path)
           }
+          draggable={!isCreating && !isRenaming}
+          onDragStart={(e) => handleDragStart(e, file)}
+          onDragOver={(e) => handleDragOver(e, file.path, file.is_directory)}
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
+          onDrop={(e) => handleDrop(e, file.path, file.is_directory)}
         >
           {file.is_directory ? (
             <div className="flex items-center gap-1.5">
@@ -257,7 +436,12 @@ export default function FileExplorer({
             {file.name}
           </span>
 
-          <div className="opacity-0 group-hover:opacity-100 flex items-center">
+          <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1">
+            {!isCreating && !isRenaming && (
+              <div className="cursor-move text-zinc-600 hover:text-zinc-400">
+                <GripVertical className="w-3 h-3" />
+              </div>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                 <Button
@@ -272,8 +456,32 @@ export default function FileExplorer({
                 align="start"
                 className="bg-zinc-900 border-zinc-800 text-zinc-300"
               >
+                {file.is_directory && (
+                  <>
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        startCreateInFolder(file.path, "file");
+                      }}
+                      className="text-zinc-300 focus:text-zinc-200 focus:bg-zinc-800"
+                    >
+                      <Plus className="w-3.5 h-3.5 mr-2" /> New File
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        startCreateInFolder(file.path, "folder");
+                      }}
+                      className="text-zinc-300 focus:text-zinc-200 focus:bg-zinc-800"
+                    >
+                      <FolderPlus className="w-3.5 h-3.5 mr-2" /> New Folder
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator className="bg-zinc-800" />
+                  </>
+                )}
                 <DropdownMenuItem
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     setRenamingPath(file.path);
                     setNewFileNameForRename(file.name);
                     setIsRenaming(true);
@@ -283,7 +491,10 @@ export default function FileExplorer({
                   <Pencil className="w-3.5 h-3.5 mr-2" /> Rename
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={() => handleDelete(file.path)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(file.path);
+                  }}
                   className="text-red-400 focus:text-red-400 focus:bg-red-400/10"
                 >
                   <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete
@@ -323,7 +534,6 @@ export default function FileExplorer({
             size="icon"
             className="h-6 w-6 text-zinc-500 hover:text-zinc-200"
             onClick={() => {
-              // This will be handled by parent
               const event = new CustomEvent("explorer-collapse");
               window.dispatchEvent(event);
             }}
@@ -335,10 +545,8 @@ export default function FileExplorer({
             variant="ghost"
             size="icon"
             className="h-6 w-6 text-zinc-500 hover:text-zinc-200"
-            onClick={() => {
-              setIsCreating(true);
-              setCreateType("file");
-            }}
+            onClick={() => startCreateInFolder("/workspace", "file")}
+            title="New File"
           >
             <Plus className="w-3.5 h-3.5" />
           </Button>
@@ -346,10 +554,8 @@ export default function FileExplorer({
             variant="ghost"
             size="icon"
             className="h-6 w-6 text-zinc-500 hover:text-zinc-200"
-            onClick={() => {
-              setIsCreating(true);
-              setCreateType("folder");
-            }}
+            onClick={() => startCreateInFolder("/workspace", "folder")}
+            title="New Folder"
           >
             <FolderPlus className="w-3.5 h-3.5" />
           </Button>
@@ -358,6 +564,7 @@ export default function FileExplorer({
             size="icon"
             className="h-6 w-6 text-zinc-500 hover:text-zinc-200"
             onClick={loadRootFiles}
+            title="Refresh"
           >
             <RefreshCcw
               className={`w-3 h-3 ${isLoading ? "animate-spin" : ""}`}
@@ -368,11 +575,25 @@ export default function FileExplorer({
 
       {isCreating && (
         <div className="p-3 bg-zinc-900 border-b border-zinc-800 shrink-0">
+          <div className="text-[10px] text-zinc-500 mb-1">
+            Creating in:{" "}
+            {createParentPath === "/workspace"
+              ? "root"
+              : createParentPath.replace("/workspace/", "")}
+          </div>
           <input
             type="text"
             value={newFileName}
             onChange={(e) => setNewFileName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                handleCreate();
+              } else if (e.key === "Escape") {
+                setIsCreating(false);
+                setNewFileName("");
+                setCreateParentPath("/workspace");
+              }
+            }}
             placeholder={`New ${createType}...`}
             className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-[11px] text-zinc-200 focus:outline-none focus:ring-1 focus:ring-blue-600 mb-2"
             autoFocus
@@ -382,7 +603,11 @@ export default function FileExplorer({
               variant="ghost"
               size="sm"
               className="h-6 px-2 text-[10px]"
-              onClick={() => setIsCreating(false)}
+              onClick={() => {
+                setIsCreating(false);
+                setNewFileName("");
+                setCreateParentPath("/workspace");
+              }}
             >
               Cancel
             </Button>
@@ -449,24 +674,52 @@ export default function FileExplorer({
         </div>
       )}
 
-      <ScrollArea className="flex-1 py-2">
-        {isLoading && rootFiles.length === 0 ? (
-          <div className="flex flex-col gap-2 px-4 py-2">
-            <Skeleton className="h-4 w-full bg-zinc-900" />
-            <Skeleton className="h-4 w-3/4 bg-zinc-900" />
-            <Skeleton className="h-4 w-5/6 bg-zinc-900" />
-          </div>
-        ) : rootFiles.length === 0 ? (
-          <div className="px-4 py-8 text-center">
-            <File className="w-8 h-8 text-zinc-800 mx-auto mb-2" />
-            <p className="text-[10px] text-zinc-600 font-medium">
-              Empty Workspace
-            </p>
-          </div>
-        ) : (
-          rootFiles.map((file) => renderNode(file, 0))
-        )}
-      </ScrollArea>
+      <div
+        className="flex-1 overflow-hidden"
+        onDragOver={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (draggedItem) {
+            e.dataTransfer.dropEffect = "move";
+            setDragOverPath("/workspace");
+          }
+        }}
+        onDragLeave={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+            setDragOverPath(null);
+          }
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (draggedItem) {
+            handleMove(draggedItem.path, "/workspace");
+            setDraggedItem(null);
+            setDragOverPath(null);
+          }
+        }}
+      >
+        <ScrollArea className="h-full py-2">
+          {isLoading && rootFiles.length === 0 ? (
+            <div className="flex flex-col gap-2 px-4 py-2">
+              <Skeleton className="h-4 w-full bg-zinc-900" />
+              <Skeleton className="h-4 w-3/4 bg-zinc-900" />
+              <Skeleton className="h-4 w-5/6 bg-zinc-900" />
+            </div>
+          ) : rootFiles.length === 0 ? (
+            <div className="px-4 py-8 text-center">
+              <File className="w-8 h-8 text-zinc-800 mx-auto mb-2" />
+              <p className="text-[10px] text-zinc-600 font-medium">
+                Empty Workspace
+              </p>
+            </div>
+          ) : (
+            rootFiles.map((file) => renderNode(file, 0))
+          )}
+        </ScrollArea>
+      </div>
     </div>
   );
 }
