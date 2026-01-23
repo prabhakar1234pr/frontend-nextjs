@@ -37,7 +37,7 @@ git push origin main
 
 ---
 
-## Step 2: Deploy to Vercel
+## Step 2: Deploy -> Vercel
 
 ### 2.1 Sign up / Login to Vercel
 
