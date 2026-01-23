@@ -52,9 +52,26 @@ async function proxyRequest(
       jsonData = data;
     }
 
+    // Forward CORS headers from backend
+    const corsHeaders: HeadersInit = {};
+    const corsHeaderNames = [
+      "access-control-allow-origin",
+      "access-control-allow-credentials",
+      "access-control-allow-methods",
+      "access-control-allow-headers",
+      "access-control-expose-headers",
+    ];
+
+    response.headers.forEach((value, key) => {
+      if (corsHeaderNames.includes(key.toLowerCase())) {
+        corsHeaders[key] = value;
+      }
+    });
+
     return NextResponse.json(jsonData, {
       status: response.status,
       statusText: response.statusText,
+      headers: corsHeaders,
     });
   } catch (error) {
     console.error("Preview proxy error:", error);

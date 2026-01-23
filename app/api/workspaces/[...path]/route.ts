@@ -9,6 +9,19 @@ import { NextRequest, NextResponse } from "next/server";
 const VM_BASE_URL =
   process.env.WORKSPACE_API_BASE_URL || "http://35.222.130.245:8080";
 
+export async function OPTIONS() {
+  // Handle CORS preflight
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers": "Authorization, Content-Type",
+      "Access-Control-Max-Age": "86400",
+    },
+  });
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
@@ -94,10 +107,27 @@ async function proxyRequest(
       jsonData = data;
     }
 
-    // Return response with same status
+    // Forward CORS headers from backend
+    const corsHeaders: HeadersInit = {};
+    const corsHeaderNames = [
+      "access-control-allow-origin",
+      "access-control-allow-credentials",
+      "access-control-allow-methods",
+      "access-control-allow-headers",
+      "access-control-expose-headers",
+    ];
+
+    response.headers.forEach((value, key) => {
+      if (corsHeaderNames.includes(key.toLowerCase())) {
+        corsHeaders[key] = value;
+      }
+    });
+
+    // Return response with same status and CORS headers
     return NextResponse.json(jsonData, {
       status: response.status,
       statusText: response.statusText,
+      headers: corsHeaders,
     });
   } catch (error) {
     console.error("Workspace proxy error:", error);
