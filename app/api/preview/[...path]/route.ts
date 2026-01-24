@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const VM_BASE_URL =
-  process.env.WORKSPACE_API_BASE_URL || "http://35.222.130.245:8080";
+  process.env.WORKSPACE_API_BASE_URL || "http://localhost:8002";
 
 export async function GET(
   request: NextRequest,

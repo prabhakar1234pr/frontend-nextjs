@@ -108,15 +108,68 @@ export async function getOrCreateWorkspace(
       // Refresh to get updated status
       const refreshed = await getWorkspaceByProject(projectId, token);
       if (refreshed.workspace) {
+        // Always try to ensure repo is cloned when opening the workspace.
+        // Never block workspace boot if cloning fails (repo might not be configured yet).
+        try {
+          await cloneWorkspaceRepo(refreshed.workspace.workspace_id, token);
+        } catch (err) {
+          console.warn("Workspace repo clone failed (non-fatal):", err);
+        }
         return refreshed.workspace;
       }
+    }
+    // Always try to ensure repo is cloned when opening the workspace.
+    // Never block workspace boot if cloning fails (repo might not be configured yet).
+    try {
+      await cloneWorkspaceRepo(existing.workspace.workspace_id, token);
+    } catch (err) {
+      console.warn("Workspace repo clone failed (non-fatal):", err);
     }
     return existing.workspace;
   }
 
   // Create new workspace
   const created = await createWorkspace(projectId, token);
+  // Always try to ensure repo is cloned when opening the workspace.
+  // Never block workspace boot if cloning fails (repo might not be configured yet).
+  try {
+    await cloneWorkspaceRepo(created.workspace.workspace_id, token);
+  } catch (err) {
+    console.warn("Workspace repo clone failed (non-fatal):", err);
+  }
   return created.workspace;
+}
+
+export async function cloneWorkspaceRepo(
+  workspaceId: string,
+  token: string
+): Promise<{
+  success: boolean;
+  status?: string;
+  branch?: string;
+  error?: string;
+}> {
+  const response = await fetch(
+    `${API_BASE}/api/workspaces/${workspaceId}/clone-repo`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  const data = await response
+    .json()
+    .catch(() => ({ success: false, error: "Failed to clone repo" }));
+
+  if (!response.ok || !data?.success) {
+    const errorMessage =
+      data?.error || data?.detail || "Failed to clone repo into workspace";
+    throw new Error(errorMessage);
+  }
+
+  return data;
 }
 
 export async function startWorkspace(

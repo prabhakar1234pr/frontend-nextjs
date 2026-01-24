@@ -383,6 +383,7 @@ export default function CodeEditor({
     }
   }, [workspaceId, activeFile, getToken, markFileSaved, refreshGitData]);
 
+  // Refresh git data when workspace becomes available.
   useEffect(() => {
     if (!workspaceId) return;
     refreshGitData();

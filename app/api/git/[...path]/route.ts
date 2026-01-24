@@ -5,12 +5,12 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
-// Use HTTPS domain in production, fallback to IP for development
+// Use HTTPS domain in production, fallback to local Docker Compose for development
 const VM_BASE_URL =
   process.env.WORKSPACE_API_BASE_URL ||
   (process.env.NODE_ENV === "production"
     ? "https://workspaces.gitguide.dev"
-    : "http://35.222.130.245:8080");
+    : "http://localhost:8002");
 
 export async function OPTIONS() {
   // Handle CORS preflight
