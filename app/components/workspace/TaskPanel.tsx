@@ -108,7 +108,12 @@ export default function TaskPanel({
           </Button>
         ) : (
           <Button
-            onClick={onVerifyTask}
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onVerifyTask();
+            }}
             disabled={isVerifying}
             className="w-full bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-900/20 h-10 font-bold text-xs uppercase tracking-widest"
           >
