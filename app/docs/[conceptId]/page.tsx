@@ -122,6 +122,27 @@ export default function DocsPage() {
     if (conceptDetails?.tasks && conceptDetails.tasks.length > 0) {
       // Navigate to the first task in the workspace
       const firstTask = conceptDetails.tasks[0];
+      // Best-effort fullscreen on entering the Workspace IDE
+      if (!document.fullscreenElement) {
+        try {
+          const root = document.documentElement as unknown as {
+            requestFullscreen?: () => Promise<void>;
+            webkitRequestFullscreen?: () => Promise<void> | void;
+            msRequestFullscreen?: () => Promise<void> | void;
+          };
+          if (root.requestFullscreen) {
+            void root.requestFullscreen().catch(() => {});
+          } else if (root.webkitRequestFullscreen) {
+            void Promise.resolve(root.webkitRequestFullscreen()).catch(
+              () => {}
+            );
+          } else if (root.msRequestFullscreen) {
+            void Promise.resolve(root.msRequestFullscreen()).catch(() => {});
+          }
+        } catch {
+          // Ignore
+        }
+      }
       router.push(`/workspace?task=${firstTask.task_id}`);
     } else {
       // If no tasks, go back to roadmap

@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, Clock, ChevronRight, Loader2 } from "lucide-react";
+import { CheckCircle2, Clock, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -58,8 +58,11 @@ export default function TaskPanel({
                     key={i}
                     className="flex gap-3 p-3 rounded-lg bg-zinc-900/50 border border-zinc-800/50 group hover:border-zinc-700 transition-colors"
                   >
-                    <div className="mt-0.5 text-blue-500 group-hover:scale-110 transition-transform">
-                      <ChevronRight className="w-3.5 h-3.5" />
+                    <div
+                      className="mt-0.5 w-3.5 h-3.5 text-blue-500 flex items-center justify-center group-hover:scale-110 transition-transform"
+                      aria-hidden="true"
+                    >
+                      •
                     </div>
                     <p className="text-[11px] text-zinc-400 leading-relaxed italic">
                       {hint}

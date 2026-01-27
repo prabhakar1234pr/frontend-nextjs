@@ -12,6 +12,26 @@ export default function TasksSection({
   tasks,
   taskProgress,
 }: TasksSectionProps) {
+  const requestFullscreenForWorkspace = () => {
+    if (document.fullscreenElement) return;
+    try {
+      const root = document.documentElement as unknown as {
+        requestFullscreen?: () => Promise<void>;
+        webkitRequestFullscreen?: () => Promise<void> | void;
+        msRequestFullscreen?: () => Promise<void> | void;
+      };
+      if (root.requestFullscreen) {
+        void root.requestFullscreen().catch(() => {});
+      } else if (root.webkitRequestFullscreen) {
+        void Promise.resolve(root.webkitRequestFullscreen()).catch(() => {});
+      } else if (root.msRequestFullscreen) {
+        void Promise.resolve(root.msRequestFullscreen()).catch(() => {});
+      }
+    } catch {
+      // Ignore
+    }
+  };
+
   const getTaskIcon = (taskType: Task["task_type"]) => {
     switch (taskType) {
       case "github_profile":
@@ -78,6 +98,7 @@ export default function TasksSection({
             <Link
               key={task.task_id}
               href={`/workspace?task=${task.task_id}`}
+              onClick={() => requestFullscreenForWorkspace()}
               className={`flex items-start gap-2 p-2 rounded border transition-colors group ${
                 isCompleted
                   ? "bg-[#3f4449] border-green-500/30 hover:border-green-500/50"

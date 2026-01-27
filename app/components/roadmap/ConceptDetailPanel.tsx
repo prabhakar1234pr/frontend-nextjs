@@ -41,6 +41,26 @@ export default function ConceptDetailPanel({
   const router = useRouter();
   const [showTasks, setShowTasks] = useState(false);
 
+  const requestFullscreenForWorkspace = () => {
+    if (document.fullscreenElement) return;
+    try {
+      const root = document.documentElement as unknown as {
+        requestFullscreen?: () => Promise<void>;
+        webkitRequestFullscreen?: () => Promise<void> | void;
+        msRequestFullscreen?: () => Promise<void> | void;
+      };
+      if (root.requestFullscreen) {
+        void root.requestFullscreen().catch(() => {});
+      } else if (root.webkitRequestFullscreen) {
+        void Promise.resolve(root.webkitRequestFullscreen()).catch(() => {});
+      } else if (root.msRequestFullscreen) {
+        void Promise.resolve(root.msRequestFullscreen()).catch(() => {});
+      }
+    } catch {
+      // Ignore
+    }
+  };
+
   if (loading || !conceptDetails) {
     return (
       <div className="w-full p-4 bg-zinc-900/50 rounded-xl border border-zinc-800 animate-pulse">
@@ -96,6 +116,7 @@ export default function ConceptDetailPanel({
   };
 
   const handleTaskClick = (taskId: string) => {
+    requestFullscreenForWorkspace();
     router.push(`/workspace?task=${taskId}`);
   };
 

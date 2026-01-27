@@ -7,7 +7,7 @@ import {
   useConceptDetails,
 } from "../../hooks/useRoadmap";
 import { useProgress } from "../../hooks/useProgress";
-import DayCardsStrip from "./DayCardsStrip";
+import RoadmapDayHeader from "./RoadmapDayHeader";
 import KanbanBoard from "./KanbanBoard";
 
 interface RoadmapPageProps {
@@ -260,12 +260,12 @@ export default function RoadmapPage({ projectId }: RoadmapPageProps) {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Day Cards Strip */}
+      {/* Day Header + Days Drawer */}
       <div className="flex-shrink-0">
-        <DayCardsStrip
+        <RoadmapDayHeader
           days={days}
-          currentDayId={selectedDayId}
-          onDayClick={setSelectedDayId}
+          selectedDayId={selectedDayId}
+          onSelectDay={setSelectedDayId}
           progressMap={dayProgressMap}
         />
       </div>

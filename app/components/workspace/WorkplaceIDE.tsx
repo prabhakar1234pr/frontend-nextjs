@@ -1,11 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { type TaskDetails, type Task } from "../../lib/api-roadmap";
 import CodeEditor from "./CodeEditor";
 import GitHubTaskPanel from "./GitHubTaskPanel";
-import { ChevronLeft, CheckCircle2, Clock } from "lucide-react";
+import {
+  ChevronLeft,
+  CheckCircle2,
+  Clock,
+  Maximize2,
+  Minimize2,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -60,6 +66,82 @@ export default function WorkplaceIDE({
 }: WorkplaceIDEProps) {
   const { task, concept, day, project } = taskDetails;
   const [isCompleted, setIsCompleted] = useState(initialCompleted || false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const didAutoEnterFullscreenRef = useRef(false);
+
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      const el = document.fullscreenElement;
+      setIsFullscreen(!!el);
+    };
+
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () =>
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
+  }, []);
+
+  useEffect(() => {
+    // Best-effort auto-enter fullscreen when user enters Workspace IDE.
+    // Some browsers may block this unless it happens from a user gesture;
+    // we also request fullscreen on the task-click navigation paths.
+    if (didAutoEnterFullscreenRef.current) return;
+    didAutoEnterFullscreenRef.current = true;
+
+    if (document.fullscreenElement) return;
+    const el = containerRef.current;
+    if (!el) return;
+
+    try {
+      const anyEl = el as unknown as {
+        requestFullscreen?: () => Promise<void>;
+        webkitRequestFullscreen?: () => Promise<void> | void;
+        msRequestFullscreen?: () => Promise<void> | void;
+      };
+      if (anyEl.requestFullscreen) {
+        void anyEl.requestFullscreen().catch(() => {});
+      } else if (anyEl.webkitRequestFullscreen) {
+        void Promise.resolve(anyEl.webkitRequestFullscreen()).catch(() => {});
+      } else if (anyEl.msRequestFullscreen) {
+        void Promise.resolve(anyEl.msRequestFullscreen()).catch(() => {});
+      }
+    } catch {
+      // Ignore
+    }
+  }, []);
+
+  const toggleFullscreen = async () => {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+        return;
+      }
+
+      const el = containerRef.current;
+      if (!el) return;
+
+      // Standard Fullscreen API
+      if (el.requestFullscreen) {
+        await el.requestFullscreen();
+        return;
+      }
+
+      // Fallbacks (older WebKit/MS) - best-effort
+      const anyEl = el as unknown as {
+        webkitRequestFullscreen?: () => Promise<void> | void;
+        msRequestFullscreen?: () => Promise<void> | void;
+      };
+      if (anyEl.webkitRequestFullscreen) {
+        await anyEl.webkitRequestFullscreen();
+        return;
+      }
+      if (anyEl.msRequestFullscreen) {
+        await anyEl.msRequestFullscreen();
+      }
+    } catch {
+      // Ignore (browser may block without a user gesture)
+    }
+  };
 
   const handleComplete = async () => {
     setIsCompleted(true);
@@ -115,7 +197,7 @@ export default function WorkplaceIDE({
   // For coding tasks, use full-screen layout
   if (task.task_type === "coding") {
     return (
-      <div className="h-screen bg-[#09090b] flex flex-col">
+      <div ref={containerRef} className="h-screen bg-[#09090b] flex flex-col">
         {/* Minimal Nav Bar */}
         <div className="h-10 bg-[#0c0c0e] border-b border-zinc-800 flex items-center px-4 gap-4">
           <Link
@@ -137,6 +219,22 @@ export default function WorkplaceIDE({
               {concept.title}
             </span>
           </div>
+
+          <div className="ml-auto flex items-center">
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              className="inline-flex items-center justify-center rounded-md border border-zinc-800 bg-zinc-900/30 px-2 py-1 text-zinc-300 hover:text-white hover:bg-zinc-900/60 transition"
+              aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+              title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+            >
+              {isFullscreen ? (
+                <Minimize2 className="h-4 w-4" aria-hidden="true" />
+              ) : (
+                <Maximize2 className="h-4 w-4" aria-hidden="true" />
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Full Height Workspace */}
@@ -147,7 +245,10 @@ export default function WorkplaceIDE({
 
   // For other tasks (GitHub tasks), use a cleaner document-style layout
   return (
-    <div className="min-h-screen bg-[#09090b] flex flex-col overflow-y-auto">
+    <div
+      ref={containerRef}
+      className="min-h-screen bg-[#09090b] flex flex-col overflow-y-auto"
+    >
       {/* Progress Bar (Simulated or based on scroll) */}
       <div className="fixed top-0 left-0 right-0 h-0.5 bg-zinc-800 z-50">
         <div className="h-full bg-blue-600 transition-all duration-300 w-full opacity-30" />
@@ -236,6 +337,31 @@ export default function WorkplaceIDE({
                       ? `/workspace?task=${nextNavigation.taskId}`
                       : `/project/${project.project_id}`
                   }
+                  onClick={() => {
+                    // If user exited fullscreen, re-enter on next task navigation.
+                    if (nextNavigation.type !== "task") return;
+                    if (document.fullscreenElement) return;
+                    const root = document.documentElement as unknown as {
+                      requestFullscreen?: () => Promise<void>;
+                      webkitRequestFullscreen?: () => Promise<void> | void;
+                      msRequestFullscreen?: () => Promise<void> | void;
+                    };
+                    try {
+                      if (root.requestFullscreen) {
+                        void root.requestFullscreen().catch(() => {});
+                      } else if (root.webkitRequestFullscreen) {
+                        void Promise.resolve(
+                          root.webkitRequestFullscreen()
+                        ).catch(() => {});
+                      } else if (root.msRequestFullscreen) {
+                        void Promise.resolve(root.msRequestFullscreen()).catch(
+                          () => {}
+                        );
+                      }
+                    } catch {
+                      // Ignore
+                    }
+                  }}
                 >
                   Continue →
                 </Link>
