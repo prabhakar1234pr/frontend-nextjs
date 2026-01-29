@@ -73,7 +73,7 @@ export default function Header() {
                           "hover:bg-zinc-800/50 text-zinc-400 hover:text-white transition-colors py-3 px-4",
                         userButtonPopoverActionButtonText:
                           "text-[10px] font-bold uppercase tracking-[0.1em]",
-                        userButtonPopoverFooter: "hidden",
+                        userButtonPopoverFooter: "gg-clerk-userbutton-footer",
                         userPreview:
                           "text-white px-5 py-4 border-b border-zinc-800 bg-zinc-900/30",
                         userPreviewMainIdentifier:

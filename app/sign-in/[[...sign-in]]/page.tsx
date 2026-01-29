@@ -14,7 +14,8 @@ export default function SignInPage() {
               Continue your learning journey
             </p>
             <p className="mt-2 text-[13px] text-zinc-500">
-              You’ll stay on GitGuide—no external redirects.
+              GitGuide is a platform that allows you to learn from any GitHub
+              repository.
             </p>
           </div>
           <SignIn

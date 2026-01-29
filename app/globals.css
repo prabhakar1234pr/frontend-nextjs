@@ -266,3 +266,53 @@ p {
 [data-slot="scroll-area-scrollbar"]:not([data-state="visible"]) {
   opacity: 1 !important;
 }
+
+/* Clerk - rebrand UserButton popover footer */
+.gg-clerk-userbutton-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid rgb(39 39 42); /* zinc-800 */
+  background: rgba(24, 24, 27, 0.9);
+}
+
+/* Hide Clerk's internal footer contents (e.g. "Development mode") */
+.gg-clerk-userbutton-footer > * {
+  display: none !important;
+}
+
+.gg-clerk-userbutton-footer::after {
+  content: "Secured by GitGuide";
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgb(161 161 170); /* zinc-400 */
+}
+
+/* Clerk - rebrand SignIn/SignUp footer ("Secured by Clerk", "Development mode") */
+.cl-signIn-root .cl-footer,
+.cl-signUp-root .cl-footer {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1rem !important;
+  border-top: 1px solid rgb(228 228 231) !important; /* zinc-200 */
+  background: rgb(250 250 250) !important; /* zinc-50 */
+}
+
+.cl-signIn-root .cl-footer > *,
+.cl-signUp-root .cl-footer > * {
+  display: none !important;
+}
+
+.cl-signIn-root .cl-footer::after,
+.cl-signUp-root .cl-footer::after {
+  content: "Secured by GitGuide";
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgb(113 113 122); /* zinc-500 */
+}
