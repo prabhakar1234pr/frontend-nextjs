@@ -41,7 +41,8 @@ export default function ConceptDetailPanel({
   const router = useRouter();
   const [showTasks, setShowTasks] = useState(false);
 
-  const requestFullscreenForWorkspace = () => {
+  const requestFullscreenForWorkspace = (taskType: Task["task_type"]) => {
+    if (taskType !== "coding") return;
     if (document.fullscreenElement) return;
     try {
       const root = document.documentElement as unknown as {
@@ -115,8 +116,8 @@ export default function ConceptDetailPanel({
     router.push(`/docs/${concept.concept_id}?project=${projectId}`);
   };
 
-  const handleTaskClick = (taskId: string) => {
-    requestFullscreenForWorkspace();
+  const handleTaskClick = (taskId: string, taskType: Task["task_type"]) => {
+    requestFullscreenForWorkspace(taskType);
     router.push(`/workspace?task=${taskId}`);
   };
 
@@ -337,7 +338,9 @@ export default function ConceptDetailPanel({
                       {tasks.map((task) => (
                         <button
                           key={task.task_id}
-                          onClick={() => handleTaskClick(task.task_id)}
+                          onClick={() =>
+                            handleTaskClick(task.task_id, task.task_type)
+                          }
                           className="w-full px-4 py-3.5 flex items-center gap-3 hover:bg-zinc-800/50 transition-all text-left group"
                         >
                           {getTaskStatusIcon(task.task_id)}

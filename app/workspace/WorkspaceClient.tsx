@@ -19,6 +19,7 @@ import WorkplaceIDE from "../components/workspace/WorkplaceIDE";
 interface NextNavigation {
   type: "task" | "concept" | "day" | "complete";
   taskId?: string;
+  taskType?: TaskDetails["task"]["task_type"];
   conceptId?: string;
   dayNumber?: number;
   projectId: string;
@@ -170,6 +171,7 @@ export default function WorkspaceClient() {
       return {
         type: "task",
         taskId: conceptDetails.tasks[currentTaskIndex + 1].task_id,
+        taskType: conceptDetails.tasks[currentTaskIndex + 1].task_type,
         projectId,
       };
     }

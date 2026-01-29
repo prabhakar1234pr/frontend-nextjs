@@ -123,7 +123,7 @@ export default function DocsPage() {
       // Navigate to the first task in the workspace
       const firstTask = conceptDetails.tasks[0];
       // Best-effort fullscreen on entering the Workspace IDE
-      if (!document.fullscreenElement) {
+      if (firstTask.task_type === "coding" && !document.fullscreenElement) {
         try {
           const root = document.documentElement as unknown as {
             requestFullscreen?: () => Promise<void>;

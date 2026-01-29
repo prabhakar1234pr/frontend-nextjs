@@ -12,7 +12,8 @@ export default function TasksSection({
   tasks,
   taskProgress,
 }: TasksSectionProps) {
-  const requestFullscreenForWorkspace = () => {
+  const requestFullscreenForWorkspace = (taskType: Task["task_type"]) => {
+    if (taskType !== "coding") return;
     if (document.fullscreenElement) return;
     try {
       const root = document.documentElement as unknown as {
@@ -98,7 +99,7 @@ export default function TasksSection({
             <Link
               key={task.task_id}
               href={`/workspace?task=${task.task_id}`}
-              onClick={() => requestFullscreenForWorkspace()}
+              onClick={() => requestFullscreenForWorkspace(task.task_type)}
               className={`flex items-start gap-2 p-2 rounded border transition-colors group ${
                 isCompleted
                   ? "bg-[#3f4449] border-green-500/30 hover:border-green-500/50"

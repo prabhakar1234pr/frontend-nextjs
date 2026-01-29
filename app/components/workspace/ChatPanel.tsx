@@ -385,15 +385,19 @@ export default function ChatPanel({
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
                       components={{
-                        // Inline code handled here; fenced code handled by pre below
+                        // Avoid a nested <pre> wrapper so code blocks render cleanly
+                        pre({ children }) {
+                          return <>{children}</>;
+                        },
                         code({ className, children, ...props }) {
                           const codeString = String(children).replace(
                             /\n$/,
                             ""
                           );
-                          const isInline =
-                            !className && !codeString.includes("\n");
+                          const match = /language-(\w+)/.exec(className || "");
+                          const language = match ? match[1] : "text";
 
+                          const isInline = !match && !codeString.includes("\n");
                           if (isInline) {
                             return (
                               <code
@@ -405,56 +409,44 @@ export default function ChatPanel({
                             );
                           }
 
+                          if (match) {
+                            return (
+                              <div className="my-3 rounded-lg overflow-hidden border border-zinc-700">
+                                <div className="flex items-center justify-between px-3 py-2 bg-zinc-900 border-b border-zinc-700">
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex gap-1.5">
+                                      <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]" />
+                                      <div className="w-2.5 h-2.5 rounded-full bg-[#febc2e]" />
+                                      <div className="w-2.5 h-2.5 rounded-full bg-[#28c840]" />
+                                    </div>
+                                    <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider ml-2">
+                                      {language}
+                                    </span>
+                                  </div>
+                                </div>
+                                <SyntaxHighlighter
+                                  style={oneDark}
+                                  language={language}
+                                  PreTag="div"
+                                  customStyle={{
+                                    margin: 0,
+                                    borderRadius: 0,
+                                    padding: "0.9rem",
+                                    fontSize: "0.75rem",
+                                    lineHeight: 1.6,
+                                    background: "#09090b",
+                                  }}
+                                >
+                                  {codeString}
+                                </SyntaxHighlighter>
+                              </div>
+                            );
+                          }
+
                           return (
                             <code className={className} {...props}>
                               {children}
                             </code>
-                          );
-                        },
-                        pre({ children }) {
-                          // react-markdown passes <code className="language-xxx">...</code> inside <pre>
-                          const child = Array.isArray(children)
-                            ? children[0]
-                            : children;
-                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                          const codeEl = child as any;
-                          const className = codeEl?.props?.className || "";
-                          const match = /language-(\w+)/.exec(className);
-                          const language = match ? match[1] : "text";
-                          const codeString = String(
-                            codeEl?.props?.children || ""
-                          ).replace(/\n$/, "");
-
-                          return (
-                            <div className="my-3 rounded-lg overflow-hidden border border-zinc-700">
-                              <div className="flex items-center justify-between px-3 py-2 bg-zinc-900 border-b border-zinc-700">
-                                <div className="flex items-center gap-2">
-                                  <div className="flex gap-1.5">
-                                    <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]" />
-                                    <div className="w-2.5 h-2.5 rounded-full bg-[#febc2e]" />
-                                    <div className="w-2.5 h-2.5 rounded-full bg-[#28c840]" />
-                                  </div>
-                                  <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider ml-2">
-                                    {language}
-                                  </span>
-                                </div>
-                              </div>
-                              <SyntaxHighlighter
-                                style={oneDark}
-                                language={language}
-                                PreTag="div"
-                                customStyle={{
-                                  margin: 0,
-                                  borderRadius: 0,
-                                  padding: "0.9rem",
-                                  fontSize: "0.75rem",
-                                  lineHeight: 1.6,
-                                  background: "#09090b",
-                                }}
-                              >
-                                {codeString}
-                              </SyntaxHighlighter>
-                            </div>
                           );
                         },
                       }}

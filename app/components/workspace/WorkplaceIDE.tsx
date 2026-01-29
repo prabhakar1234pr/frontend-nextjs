@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 interface NextNavigation {
   type: "task" | "concept" | "day" | "complete";
   taskId?: string;
+  taskType?: Task["task_type"];
   conceptId?: string;
   dayNumber?: number;
   projectId: string;
@@ -85,12 +86,12 @@ export default function WorkplaceIDE({
     // Best-effort auto-enter fullscreen when user enters Workspace IDE.
     // Some browsers may block this unless it happens from a user gesture;
     // we also request fullscreen on the task-click navigation paths.
+    if (task.task_type !== "coding") return;
     if (didAutoEnterFullscreenRef.current) return;
     didAutoEnterFullscreenRef.current = true;
 
     if (document.fullscreenElement) return;
-    const el = containerRef.current;
-    if (!el) return;
+    const el = document.documentElement;
 
     try {
       const anyEl = el as unknown as {
@@ -117,8 +118,7 @@ export default function WorkplaceIDE({
         return;
       }
 
-      const el = containerRef.current;
-      if (!el) return;
+      const el = document.documentElement;
 
       // Standard Fullscreen API
       if (el.requestFullscreen) {
@@ -340,6 +340,7 @@ export default function WorkplaceIDE({
                   onClick={() => {
                     // If user exited fullscreen, re-enter on next task navigation.
                     if (nextNavigation.type !== "task") return;
+                    if (nextNavigation.taskType !== "coding") return;
                     if (document.fullscreenElement) return;
                     const root = document.documentElement as unknown as {
                       requestFullscreen?: () => Promise<void>;
