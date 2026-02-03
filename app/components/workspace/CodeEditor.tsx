@@ -95,6 +95,14 @@ interface CodeEditorProps {
   projectId: string;
   onComplete: () => void;
   initialCompleted?: boolean;
+  nextNavigation?: {
+    type: "task" | "concept" | "day" | "complete";
+    taskId?: string;
+    taskType?: Task["task_type"];
+    conceptId?: string;
+    dayNumber?: number;
+    projectId: string;
+  } | null;
 }
 
 export default function CodeEditor({
@@ -103,6 +111,7 @@ export default function CodeEditor({
   projectId,
   onComplete,
   initialCompleted,
+  nextNavigation,
 }: CodeEditorProps) {
   const { getToken } = useAuth();
 
@@ -1371,6 +1380,7 @@ export default function CodeEditor({
               isVerifying={isVerifying}
               onVerifyTask={handleVerifyTask}
               verificationResult={verificationResult}
+              nextNavigation={nextNavigation}
               gitStatus={gitStatus}
               gitCommits={gitCommits}
               gitLoading={gitLoading}

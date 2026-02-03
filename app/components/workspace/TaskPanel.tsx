@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { CheckCircle2, Clock, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,12 +9,22 @@ import type { Task } from "../../lib/api-roadmap";
 import type { TaskVerificationResponse } from "../../lib/api-verification";
 import VerificationResults from "./VerificationResults";
 
+interface NextNavigation {
+  type: "task" | "concept" | "day" | "complete";
+  taskId?: string;
+  taskType?: Task["task_type"];
+  conceptId?: string;
+  dayNumber?: number;
+  projectId: string;
+}
+
 interface TaskPanelProps {
   task: Task;
   isCompleted: boolean;
   isVerifying: boolean;
   onVerifyTask: () => void;
   verificationResult?: TaskVerificationResponse | null;
+  nextNavigation?: NextNavigation | null;
 }
 
 export default function TaskPanel({
@@ -22,6 +33,7 @@ export default function TaskPanel({
   isVerifying,
   onVerifyTask,
   verificationResult,
+  nextNavigation,
 }: TaskPanelProps) {
   return (
     <div className="flex flex-col h-full">
@@ -102,13 +114,39 @@ export default function TaskPanel({
 
         {/* Verify Button */}
         {isCompleted ? (
-          <Button
-            disabled
-            className="w-full bg-emerald-600/20 text-emerald-500 border border-emerald-600/20 h-10"
-          >
-            <CheckCircle2 className="w-4 h-4 mr-2" />
-            Task Completed
-          </Button>
+          <>
+            <Button
+              disabled
+              className="w-full bg-emerald-600/20 text-emerald-500 border border-emerald-600/20 h-10"
+            >
+              <CheckCircle2 className="w-4 h-4 mr-2" />
+              Task Completed
+            </Button>
+
+            {nextNavigation?.type === "task" && nextNavigation.taskId && (
+              <Button
+                asChild
+                className="w-full bg-white text-zinc-950 hover:bg-zinc-200 h-10 font-bold text-xs uppercase tracking-widest"
+              >
+                <Link href={`/workspace?task=${nextNavigation.taskId}`}>
+                  Continue to next task
+                </Link>
+              </Button>
+            )}
+
+            {nextNavigation &&
+              nextNavigation.type !== "task" &&
+              nextNavigation.projectId && (
+                <Button
+                  asChild
+                  className="w-full bg-zinc-900 hover:bg-zinc-800 text-white border border-zinc-800 h-10 font-bold text-xs uppercase tracking-widest"
+                >
+                  <Link href={`/project/${nextNavigation.projectId}`}>
+                    Go to Roadmap
+                  </Link>
+                </Button>
+              )}
+          </>
         ) : (
           <Button
             type="button"

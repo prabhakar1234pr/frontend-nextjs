@@ -162,6 +162,7 @@ export default function WorkplaceIDE({
             projectId={project.project_id}
             onComplete={handleComplete}
             initialCompleted={isCompleted}
+            nextNavigation={nextNavigation}
           />
         );
 

@@ -22,6 +22,14 @@ interface RightSidePanelProps {
   isVerifying: boolean;
   onVerifyTask: () => void;
   verificationResult: TaskVerificationResponse | null;
+  nextNavigation?: {
+    type: "task" | "concept" | "day" | "complete";
+    taskId?: string;
+    taskType?: Task["task_type"];
+    conceptId?: string;
+    dayNumber?: number;
+    projectId: string;
+  } | null;
 
   // Git props
   gitStatus: GitStatusResponse | null;
@@ -65,6 +73,7 @@ export default function RightSidePanel({
   isVerifying,
   onVerifyTask,
   verificationResult,
+  nextNavigation,
   gitStatus,
   gitCommits,
   gitLoading,
@@ -137,6 +146,7 @@ export default function RightSidePanel({
             isVerifying={isVerifying}
             onVerifyTask={onVerifyTask}
             verificationResult={verificationResult}
+            nextNavigation={nextNavigation}
           />
         </TabsContent>
 
