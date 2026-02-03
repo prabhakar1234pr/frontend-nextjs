@@ -1,7 +1,7 @@
 "use client";
 
-import React from "react";
-import { Player } from "@remotion/player";
+import React, { useEffect, useRef, useState } from "react";
+import { Player, type PlayerRef } from "@remotion/player";
 import {
   AbsoluteFill,
   interpolate,
@@ -520,9 +520,44 @@ export function GitGuideExplainerComposition() {
 }
 
 export default function ExplainerVideo() {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const playerRef = useRef<PlayerRef | null>(null);
+  const [inView, setInView] = useState(false);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        const visible = entry.isIntersecting && entry.intersectionRatio >= 0.35;
+        setInView(visible);
+      },
+      { threshold: [0, 0.35, 1] }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const player = playerRef.current;
+    if (!player) return;
+
+    if (inView) {
+      player.play();
+    } else {
+      player.pause();
+    }
+  }, [inView]);
+
   return (
-    <div className="rounded-3xl border border-white/10 bg-black/40 backdrop-blur-xl shadow-2xl shadow-black/50 overflow-hidden">
+    <div
+      ref={containerRef}
+      className="rounded-3xl border border-white/10 bg-black/40 backdrop-blur-xl shadow-2xl shadow-black/50 overflow-hidden"
+    >
       <Player
+        ref={playerRef}
         component={GitGuideExplainerComposition}
         durationInFrames={300}
         fps={30}
@@ -530,7 +565,7 @@ export default function ExplainerVideo() {
         compositionHeight={720}
         controls={false}
         loop
-        autoPlay
+        autoPlay={false}
         style={{
           width: "100%",
           aspectRatio: "16 / 9",
